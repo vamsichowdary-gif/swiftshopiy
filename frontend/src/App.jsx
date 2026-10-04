@@ -42,7 +42,7 @@ export default function App() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://127.0.0.1:8000/api/products");
+      const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/products");
       const formatted = res.data.map((item) => ({
         ...item,
         price: parseFloat(item.price),

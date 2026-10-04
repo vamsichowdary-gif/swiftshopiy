@@ -16,7 +16,7 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
     setError("");
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/login", { email, password });
+      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/login", { email, password });
       if (adminMode && !["Admin", "Super Admin"].includes(res.data.user.role)) {
         setError("This account does not have administrator access.");
         return;
