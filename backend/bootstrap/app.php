@@ -13,8 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Run CORS middleware globally so every API and preflight response receives CORS headers
-        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        // Prepend custom CORS middleware to ensure it runs first on all incoming requests
+        $middleware->prepend(\App\Http\Middleware\Cors::class);
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdminUser::class,
