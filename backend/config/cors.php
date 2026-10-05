@@ -1,43 +1,49 @@
 <?php
 
-return [
+namespace App\Http\Middleware;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
-    */
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
+class Cors
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $allowedOrigins = [
+            'https://swiftshopiy.vercel.app',
+            'http://localhost:5173',
+            'http://localhost:3000',
+        ];
 
+        $origin = $request->headers->get('Origin', '');
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+        // Allow listed origin or any Vercel preview domain
+        $allowOrigin = '';
+        if (in_array($origin, $allowedOrigins, true) || preg_match('/\.vercel\.app$/', $origin)) {
+            $allowOrigin = $origin;
+        } elseif (!empty($allowedOrigins)) {
+            $allowOrigin = $allowedOrigins[0];
+        }
 
-    'allowed_methods' => ['*'],
+        // Handle preflight OPTIONS request
+        if ($request->isMethod('OPTIONS')) {
+            return response('', 200, [
+                'Access-Control-Allow-Origin' => $allowOrigin,
+                'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin',
+                'Access-Control-Allow-Credentials' => 'true',
+            ]);
+        }
 
-    'allowed_origins' => [
-        'https://swiftshopiy.vercel.app',
-        'http://localhost:5173',
-        'http://localhost:3000',
-    ],
+        /** @var Response $response */
+        $response = $next($request);
 
-    'allowed_origins_patterns' => [
-        '#^https://.*\.vercel\.app$#',
-    ],
+        $response->headers->set('Access-Control-Allow-Origin', $allowOrigin);
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin');
+        $response->headers->set('Access-Control-Allow-Credentials', 'true');
 
-    'allowed_headers' => ['*'],
-
-    'exposed_headers' => [],
-
-    'max_age' => 0,
-
-    'supports_credentials' => true,
-
-
-];
+        return $response;
+    }
+}

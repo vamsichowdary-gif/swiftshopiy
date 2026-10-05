@@ -17,8 +17,11 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
+        $user_id = 'SW' . rand(999999, 000000);
+
         $user = User::create([
             'name' => $validated['name'],
+            'user_id' => $user_id,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'Customer', // Public registration is always Customer
