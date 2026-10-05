@@ -43,14 +43,17 @@ export default function App() {
     setLoading(true);
     try {
       const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/products");
-      const formatted = res.data.map((item) => ({
-        ...item,
-        price: parseFloat(item.price),
-        rating: parseFloat(item.rating || 5.0),
-      }));
-      setProducts(formatted);
+      const data = res.data;
+      const productList = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+        ? data.data
+        : data?.products || [];
+
+      setProducts(productList);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load products:", err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -85,7 +88,7 @@ export default function App() {
       }
       return [...prev, { ...product, qty: 1 }];
     });
-    setIsCartOpen(true); // Automatically open the cart drawer when an item is added
+    setIsCartOpen(true);
   };
 
   // Update item quantity directly (+ / -)
@@ -111,6 +114,10 @@ export default function App() {
 
   const totalCartCount = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
 
+  // Normalize role matching (case-insensitive)
+  const userRole = user?.role?.toLowerCase();
+  const isAdmin = userRole === "admin" || userRole === "super admin";
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -133,7 +140,10 @@ export default function App() {
         <div className="flex-1">
           <Routes>
             <Route path="/" element={<Home products={products} onAddToCart={addToCart} />} />
-            <Route path="/shop" element={<Shop products={products} loading={loading} onAddToCart={addToCart} />} />
+            <Route
+              path="/shop"
+              element={<Shop products={products} loading={loading} onAddToCart={addToCart} />}
+            />
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
             <Route path="/contact" element={<Contact />} />
@@ -157,7 +167,13 @@ export default function App() {
             {/* Protected Customer Dashboard */}
             <Route
               path="/dashboard"
-              element={user && user.role === "Customer" ? <UserDashboard user={user} /> : <Navigate to="/login" replace />}
+              element={
+                user && userRole === "customer" ? (
+                  <UserDashboard user={user} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
             >
               <Route index element={<Navigate to="profile" replace />} />
               <Route path="profile" element={<ProfilePage />} />
@@ -170,8 +186,14 @@ export default function App() {
             <Route
               path="/admin"
               element={
-                user && ["Admin", "Super Admin"].includes(user.role) ? (
-                  <AdminDashboard token={token} onLogout={handleLogout} onBackToStore={() => { window.location.href = "/"; }} />
+                isAdmin ? (
+                  <AdminDashboard
+                    token={token}
+                    onLogout={handleLogout}
+                    onBackToStore={() => {
+                      window.location.href = "/";
+                    }}
+                  />
                 ) : (
                   <Navigate to="/admin/login" replace />
                 )
