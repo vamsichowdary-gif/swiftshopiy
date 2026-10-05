@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit2, Trash2, X, ArrowLeft, RefreshCw, LayoutDashboard, ShoppingBag, Package, Users, CircleDollarSign, Clock3, Ban } from "lucide-react";
 
-const API_URL = "https://swiftshopiy-backned.onrender.com/api/products";
+const API_URL = "https://swiftshopiy-backend.onrender.com/api/products";
 
 const INITIAL_FORM = {
   name: "",
@@ -49,10 +49,10 @@ export default function AdminPanel({ onBackToStore, token, onLogout }) {
   }, []);
 
   const authConfig = { headers: { Authorization: `Bearer ${token}` } };
-  const fetchOverview = async () => { try { const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/admin/overview", authConfig); setOverview(res.data); } catch (err) { console.error(err); } };
-  const fetchUsers = async () => { try { const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/admin/users", authConfig); setUsers(res.data); } catch (err) { console.error(err); } };
-  const fetchOrders = async (status = orderFilter) => { try { const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/admin/orders", { ...authConfig, params: status === "All" ? {} : { status } }); setOrders(res.data); } catch (err) { console.error(err); } };
-  const updateOrderStatus = async (orderId, status) => { try { await axios.patch(`https://swiftshopiy-backned.onrender.com/api/admin/orders/${orderId}/status`, { status }, authConfig); await fetchOrders(); await fetchOverview(); } catch (err) { alert(err.response?.data?.message || "Could not update order status."); } };
+  const fetchOverview = async () => { try { const res = await axios.get("https://swiftshopiy-backend.onrender.com/api/admin/overview", authConfig); setOverview(res.data); } catch (err) { console.error(err); } };
+  const fetchUsers = async () => { try { const res = await axios.get("https://swiftshopiy-backend.onrender.com/api/admin/users", authConfig); setUsers(res.data); } catch (err) { console.error(err); } };
+  const fetchOrders = async (status = orderFilter) => { try { const res = await axios.get("https://swiftshopiy-backend.onrender.com/api/admin/orders", { ...authConfig, params: status === "All" ? {} : { status } }); setOrders(res.data); } catch (err) { console.error(err); } };
+  const updateOrderStatus = async (orderId, status) => { try { await axios.patch(`https://swiftshopiy-backend.onrender.com/api/admin/orders/${orderId}/status`, { status }, authConfig); await fetchOrders(); await fetchOverview(); } catch (err) { alert(err.response?.data?.message || "Could not update order status."); } };
 
   const openCreateModal = () => {
     setEditingId(null);

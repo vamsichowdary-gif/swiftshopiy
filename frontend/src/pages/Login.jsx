@@ -16,10 +16,13 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
     setError("");
 
     try {
-      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/login", { 
-        email, 
-        password 
-      });
+      const res = await axios.post(
+        "https://swiftshopiy-backend.onrender.com/api/login",
+        {
+          email,
+          password,
+        },
+      );
 
       const { user, token } = res.data;
       const userRole = user?.role || "Customer";
@@ -47,9 +50,9 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
       }
     } catch (err) {
       console.error("Login Error:", err.response?.data || err.message);
-      const serverMessage = 
+      const serverMessage =
         err.response?.data?.errors?.email?.[0] ||
-        err.response?.data?.message || 
+        err.response?.data?.message ||
         "Invalid email or password.";
       setError(serverMessage);
     } finally {
@@ -64,8 +67,8 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
           {adminMode ? "Administrator Sign In" : "Sign In"}
         </h2>
         <p className="text-xs text-slate-500 text-center mt-1 mb-6">
-          {adminMode 
-            ? "Sign in with an authorized Super Admin or Admin account" 
+          {adminMode
+            ? "Sign in with an authorized Super Admin or Admin account"
             : "Access your customer portal and order history"}
         </p>
 
@@ -77,7 +80,9 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               required
@@ -88,7 +93,9 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Password
+            </label>
             <input
               type="password"
               required
@@ -110,7 +117,10 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
         {!adminMode && (
           <p className="text-xs text-slate-600 text-center mt-6">
             Don't have an account?{" "}
-            <Link to="/register" className="font-bold text-indigo-600 hover:underline">
+            <Link
+              to="/register"
+              className="font-bold text-indigo-600 hover:underline"
+            >
               Register here
             </Link>
           </p>

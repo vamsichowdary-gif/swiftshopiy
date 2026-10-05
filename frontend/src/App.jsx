@@ -42,7 +42,7 @@ export default function App() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/products");
+      const res = await axios.get("https://swiftshopiy-backend.onrender.com/api/products");
       const data = res.data;
       const productList = Array.isArray(data)
         ? data
