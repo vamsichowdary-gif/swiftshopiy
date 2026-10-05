@@ -23,8 +23,10 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 # Copy the rest of the application codebase
 COPY . .
 
-# Generate optimized autoloader and run discovery scripts
-RUN composer dump-autoload --optimize --no-dev
+# Clear generated manifests copied from a local environment. They can contain
+# providers for development-only packages that are absent from this image.
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
+    && composer dump-autoload --optimize --no-dev
 
 # Set permissions for Laravel directories
 RUN chown -R www-data:www-data storage bootstrap/cache \
