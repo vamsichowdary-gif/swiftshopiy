@@ -16,15 +16,42 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
     setError("");
 
     try {
-      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/login", { email, password });
-      if (adminMode && !["Admin", "Super Admin"].includes(res.data.user.role)) {
+      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/login", { 
+        email, 
+        password 
+      });
+
+      const { user, token } = res.data;
+      const userRole = user?.role || "Customer";
+
+      // If user attempted to access the Admin login portal without admin privileges
+      if (adminMode && !["Admin", "Super Admin"].includes(userRole)) {
         setError("This account does not have administrator access.");
+        setLoading(false);
         return;
       }
-      onAuthSuccess(res.data.user, res.data.token);
-      navigate(adminMode ? "/admin" : res.data.user.role === "Customer" ? "/dashboard" : "/admin");
+
+      // Safely persist to storage
+      if (token) localStorage.setItem("token", token);
+      if (user) localStorage.setItem("user", JSON.stringify(user));
+
+      if (typeof onAuthSuccess === "function") {
+        onAuthSuccess(user, token);
+      }
+
+      // Role-based routing
+      if (adminMode || ["Admin", "Super Admin"].includes(userRole)) {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password.");
+      console.error("Login Error:", err.response?.data || err.message);
+      const serverMessage = 
+        err.response?.data?.errors?.email?.[0] ||
+        err.response?.data?.message || 
+        "Invalid email or password.";
+      setError(serverMessage);
     } finally {
       setLoading(false);
     }
@@ -33,10 +60,20 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="bg-white max-w-md w-full p-8 rounded-3xl border border-slate-200 shadow-xl">
-        <h2 className="text-2xl font-bold text-slate-900 text-center">{adminMode ? "Administrator Sign In" : "Sign In"}</h2>
-        <p className="text-xs text-slate-500 text-center mt-1 mb-6">{adminMode ? "Sign in with an authorized administrator account" : "Access your customer portal and order history"}</p>
+        <h2 className="text-2xl font-bold text-slate-900 text-center">
+          {adminMode ? "Administrator Sign In" : "Sign In"}
+        </h2>
+        <p className="text-xs text-slate-500 text-center mt-1 mb-6">
+          {adminMode 
+            ? "Sign in with an authorized Super Admin or Admin account" 
+            : "Access your customer portal and order history"}
+        </p>
 
-        {error && <div className="mb-4 text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200">{error}</div>}
+        {error && (
+          <div className="mb-4 text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -47,6 +84,7 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. admin@swiftshop.com"
             />
           </div>
           <div>
@@ -57,23 +95,26 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="••••••••"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow transition-all disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log In"}
           </button>
         </form>
 
-        {!adminMode && <p className="text-xs text-slate-600 text-center mt-6">
-          Don't have an account?{" "}
-          <Link to="/register" className="font-bold text-indigo-600 hover:underline">
-            Register here
-          </Link>
-        </p>}
+        {!adminMode && (
+          <p className="text-xs text-slate-600 text-center mt-6">
+            Don't have an account?{" "}
+            <Link to="/register" className="font-bold text-indigo-600 hover:underline">
+              Register here
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );
