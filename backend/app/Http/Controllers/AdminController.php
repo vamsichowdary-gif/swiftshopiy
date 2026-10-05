@@ -40,6 +40,6 @@ class AdminController extends Controller
 
     public function users()
     {
-        return response()->json(User::query()->select('id', 'user_id', 'name', 'email', 'role', 'created_at')->withCount('orders')->latest()->get());
+        return response()->json(User::query()->select('id', 'user_id', 'username', 'name', 'email', 'role', 'created_at')->withCount('orders')->latest()->get());
     }
 }

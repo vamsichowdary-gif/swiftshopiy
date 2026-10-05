@@ -13,6 +13,7 @@ class AuthController extends Controller
     {
         $validated =$request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:50|alpha_dash|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
         ]);
@@ -24,6 +25,7 @@ class AuthController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
+            'username' => strtolower($validated['username']),
             'user_id' => $user_id,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -36,6 +38,7 @@ class AuthController extends Controller
             'message' => 'Registration successful',
             'user' => [
                 'id' => $user->id,
+                'username' => $user->username,
                 'user_id' => $user->user_id,
                 'name' => $user->name,
                 'email' => $user->email,
@@ -47,12 +50,16 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
+        $validated = $request->validate([
+            'identifier' => 'required_without:email|string|max:255',
+            'email' => 'required_without:identifier|email|max:255',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email',$request->email)->first();
+        $identifier = strtolower($validated['identifier'] ?? $validated['email']);
+        $user = User::whereRaw('LOWER(email) = ?', [$identifier])
+            ->orWhereRaw('LOWER(username) = ?', [$identifier])
+            ->first();
 
         if (!$user || !Hash::check($request->password,$user->password)) {
             throw ValidationException::withMessages([
@@ -66,6 +73,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'user' => [
                 'id' => $user->id,
+                'username' => $user->username,
                 'user_id' => $user->user_id, // Returned to frontend for navbar & dashboard
                 'name' => $user->name,
                 'email' => $user->email,

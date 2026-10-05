@@ -4,7 +4,7 @@ import axios from "axios";
 import { Loader2 } from "lucide-react";
 
 export default function Login({ onAuthSuccess, adminMode = false }) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,15 +17,16 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
 
     try {
       const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/login", { 
-        email, 
+        identifier,
         password 
       });
 
       const { user, token } = res.data;
-      const userRole = user?.role || "Customer";
+      const userRole = (user?.role || "Customer").toLowerCase();
+      const hasAdminAccess = ["admin", "super admin"].includes(userRole);
 
       // If user attempted to access the Admin login portal without admin privileges
-      if (adminMode && !["Admin", "Super Admin"].includes(userRole)) {
+      if (adminMode && !hasAdminAccess) {
         setError("This account does not have administrator access.");
         setLoading(false);
         return;
@@ -40,7 +41,7 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
       }
 
       // Role-based routing
-      if (adminMode || ["Admin", "Super Admin"].includes(userRole)) {
+      if (adminMode || hasAdminAccess) {
         navigate("/admin");
       } else {
         navigate("/dashboard");
@@ -48,6 +49,7 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
     } catch (err) {
       console.error("Login Error:", err.response?.data || err.message);
       const serverMessage = 
+        err.response?.data?.errors?.identifier?.[0] ||
         err.response?.data?.errors?.email?.[0] ||
         err.response?.data?.message || 
         "Invalid email or password.";
@@ -77,14 +79,15 @@ export default function Login({ onAuthSuccess, adminMode = false }) {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Username or email</label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="e.g. admin@swiftshop.com"
+              placeholder="e.g. admin or admin@swiftshop.com"
             />
           </div>
           <div>

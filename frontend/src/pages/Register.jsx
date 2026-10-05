@@ -4,7 +4,7 @@ import axios from "axios";
 import { Loader2 } from "lucide-react";
 
 export default function Register({ onAuthSuccess }) {
-  const [form, setForm] = useState({ name: "", email: "", password: "", password_confirmation: "" });
+  const [form, setForm] = useState({ name: "", username: "", email: "", password: "", password_confirmation: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -41,6 +41,18 @@ export default function Register({ onAuthSuccess }) {
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Username</label>
+            <input
+              type="text"
+              required
+              autoComplete="username"
+              pattern="[A-Za-z0-9_-]+"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
               className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>

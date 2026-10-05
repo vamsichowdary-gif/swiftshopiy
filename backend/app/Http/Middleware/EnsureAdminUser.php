@@ -13,7 +13,7 @@ class EnsureAdminUser
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!in_array($request->user()?->role, ['Admin', 'Super Admin'], true)) {
+        if (!in_array(strtolower((string) $request->user()?->role), ['admin', 'super admin'], true)) {
             return response()->json(['message' => 'Administrator access required.'], 403);
         }
 

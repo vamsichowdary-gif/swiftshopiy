@@ -5,7 +5,7 @@ import axios from "axios";
 
 export function ProfilePage() {
   const { user } = useOutletContext();
-  return <><h1 className="text-2xl font-bold">My profile</h1><p className="text-slate-500 mt-1 mb-7">Your account information</p><div className="max-w-lg space-y-4">{[["User ID", user.user_id || `#${user.id}`], ["Full name", user.name], ["Email address", user.email], ["Account role", user.role || "Customer"]].map(([label, value]) => <label key={label} className="block text-sm font-medium text-slate-600">{label}<input readOnly value={value || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800" /></label>)}</div></>;
+  return <><h1 className="text-2xl font-bold">My profile</h1><p className="text-slate-500 mt-1 mb-7">Your account information</p><div className="max-w-lg space-y-4">{[["User ID", user.user_id || `#${user.id}`], ["Username", user.username], ["Full name", user.name], ["Email address", user.email], ["Account role", user.role || "Customer"]].map(([label, value]) => <label key={label} className="block text-sm font-medium text-slate-600">{label}<input readOnly value={value || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800" /></label>)}</div></>;
 }
 
 export function OrdersPage() {
