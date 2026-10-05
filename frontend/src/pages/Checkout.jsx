@@ -49,7 +49,7 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
       };
 
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.post("https://swiftshopiy-backend.onrender.com/api/checkout", payload, config);
+      await axios.post("https://swiftshopiy-backned.onrender.com/api/checkout", payload, config);
 
       onClearCart();
       setOrderComplete(true);

@@ -15,12 +15,7 @@ import Register from "./pages/Register";
 import Checkout from "./pages/Checkout";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./AdminPanel";
-import {
-  ProfilePage,
-  OrdersPage,
-  AddressesPage,
-  SupportPage,
-} from "./pages/CustomerPages";
+import { ProfilePage, OrdersPage, AddressesPage, SupportPage } from "./pages/CustomerPages";
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -47,15 +42,13 @@ export default function App() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        "https://swiftshopiy-backend.onrender.com/api/products",
-      );
+      const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/products");
       const data = res.data;
       const productList = Array.isArray(data)
         ? data
         : Array.isArray(data?.data)
-          ? data.data
-          : data?.products || [];
+        ? data.data
+        : data?.products || [];
 
       setProducts(productList);
     } catch (err) {
@@ -90,7 +83,7 @@ export default function App() {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, qty: (item.qty || 1) + 1 } : item,
+          item.id === product.id ? { ...item, qty: (item.qty || 1) + 1 } : item
         );
       }
       return [...prev, { ...product, qty: 1 }];
@@ -105,9 +98,7 @@ export default function App() {
       return;
     }
     setCart((prev) =>
-      prev.map((item) =>
-        item.id === productId ? { ...item, qty: newQty } : item,
-      ),
+      prev.map((item) => (item.id === productId ? { ...item, qty: newQty } : item))
     );
   };
 
@@ -148,35 +139,17 @@ export default function App() {
 
         <div className="flex-1">
           <Routes>
-            <Route
-              path="/"
-              element={<Home products={products} onAddToCart={addToCart} />}
-            />
+            <Route path="/" element={<Home products={products} onAddToCart={addToCart} />} />
             <Route
               path="/shop"
-              element={
-                <Shop
-                  products={products}
-                  loading={loading}
-                  onAddToCart={addToCart}
-                />
-              }
+              element={<Shop products={products} loading={loading} onAddToCart={addToCart} />}
             />
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
             <Route path="/contact" element={<Contact />} />
-            <Route
-              path="/login"
-              element={<Login onAuthSuccess={handleAuthSuccess} />}
-            />
-            <Route
-              path="/admin/login"
-              element={<Login onAuthSuccess={handleAuthSuccess} adminMode />}
-            />
-            <Route
-              path="/register"
-              element={<Register onAuthSuccess={handleAuthSuccess} />}
-            />
+            <Route path="/login" element={<Login onAuthSuccess={handleAuthSuccess} />} />
+            <Route path="/admin/login" element={<Login onAuthSuccess={handleAuthSuccess} adminMode />} />
+            <Route path="/register" element={<Register onAuthSuccess={handleAuthSuccess} />} />
 
             {/* Checkout Route */}
             <Route

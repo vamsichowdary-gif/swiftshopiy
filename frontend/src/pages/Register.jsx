@@ -15,7 +15,7 @@ export default function Register({ onAuthSuccess }) {
     setError("");
 
     try {
-      const res = await axios.post("https://swiftshopiy-backend.onrender.com/api/register", form);
+      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/register", form);
       onAuthSuccess(res.data.user, res.data.token);
       navigate("/dashboard");
     } catch (err) {
