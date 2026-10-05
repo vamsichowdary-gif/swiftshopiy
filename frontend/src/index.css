@@ -1,1 +1,16 @@
 @import "tailwindcss";
+@keyframes ambient-sweep {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.15);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.animate-ambient-sweep {
+  animation: ambient-sweep 18s ease-in-out infinite alternate;
+}
