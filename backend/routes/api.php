@@ -5,6 +5,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\SupportController;
 use App\Http\Middleware\EnsureAdminUser;
 
 // Public Authentication
@@ -23,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Authenticated Checkout
     Route::post('/checkout', [OrderController::class, 'store']);
     Route::get('/user/orders', [OrderController::class, 'userOrders']);
+    Route::get('/user/support-tickets', [SupportController::class, 'index']);
+    Route::post('/user/support-tickets', [SupportController::class, 'store']);
 
     // Admin-Only Routes
     Route::middleware(EnsureAdminUser::class)->prefix('admin')->name('admin.')->group(function () {
@@ -30,6 +33,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
         Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('orders.updateStatus');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::get('/support-tickets', [SupportController::class, 'adminIndex'])->name('support-tickets');
+        Route::patch('/support-tickets/{ticket}', [SupportController::class, 'update'])->name('support-tickets.update');
 
         // Admin Product Management
         Route::post('/products', [ProductController::class, 'store'])->name('products.store');
