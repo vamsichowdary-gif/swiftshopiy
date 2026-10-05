@@ -1,49 +1,25 @@
 <?php
 
-namespace App\Http\Middleware;
+return [
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-use Closure;
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+    'allowed_methods' => ['*'],
 
-class Cors
-{
-    public function handle(Request $request, Closure $next): Response
-    {
-        $allowedOrigins = [
-            'https://swiftshopiy.vercel.app',
-            'http://localhost:5173',
-            'http://localhost:3000',
-        ];
+    'allowed_origins' => [
+        'https://swiftshopiy.vercel.app',
+        'http://localhost:5173',
+        'http://localhost:3000',
+    ],
 
-        $origin = $request->headers->get('Origin', '');
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9-]+\.vercel\.app$#',
+    ],
 
-        // Allow listed origin or any Vercel preview domain
-        $allowOrigin = '';
-        if (in_array($origin, $allowedOrigins, true) || preg_match('/\.vercel\.app$/', $origin)) {
-            $allowOrigin = $origin;
-        } elseif (!empty($allowedOrigins)) {
-            $allowOrigin = $allowedOrigins[0];
-        }
+    'allowed_headers' => ['*'],
 
-        // Handle preflight OPTIONS request
-        if ($request->isMethod('OPTIONS')) {
-            return response('', 200, [
-                'Access-Control-Allow-Origin' => $allowOrigin,
-                'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin',
-                'Access-Control-Allow-Credentials' => 'true',
-            ]);
-        }
+    'exposed_headers' => [],
 
-        /** @var Response $response */
-        $response = $next($request);
+    'max_age' => 0,
 
-        $response->headers->set('Access-Control-Allow-Origin', $allowOrigin);
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin');
-        $response->headers->set('Access-Control-Allow-Credentials', 'true');
-
-        return $response;
-    }
-}
+    'supports_credentials' => true,
+];
