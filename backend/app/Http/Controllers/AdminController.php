@@ -24,7 +24,7 @@ class AdminController extends Controller
 
     public function orders(Request $request)
     {
-        $query = Order::latest();
+        $query = Order::with('user:id,user_id,name,email')->latest();
         if ($request->filled('status') && $request->status !== 'All') {
             $query->where('status', $request->status);
         }
@@ -40,6 +40,6 @@ class AdminController extends Controller
 
     public function users()
     {
-        return response()->json(User::query()->select('id', 'name', 'email', 'role', 'created_at')->latest()->get());
+        return response()->json(User::query()->select('id', 'user_id', 'name', 'email', 'role', 'created_at')->withCount('orders')->latest()->get());
     }
 }

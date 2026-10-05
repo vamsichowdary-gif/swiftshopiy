@@ -30,7 +30,7 @@ export default function Navbar({ user, onLogout, cartCount, onOpenCart }) {
         {/* Action Controls */}
         <div className="flex items-center gap-3">
           {/* Admin Link if role is Admin/Super Admin */}
-          {user?.role === "Super Admin" || user?.role === "Admin" ? (
+          { ["super admin", "admin"].includes(user?.role?.toLowerCase()) ? (
             <Link
               to="/admin"
               className="flex items-center gap-1 text-xs font-semibold bg-slate-900 text-white px-3 py-2 rounded-xl hover:bg-indigo-600 transition"
@@ -46,7 +46,7 @@ export default function Navbar({ user, onLogout, cartCount, onOpenCart }) {
                 to="/dashboard"
                 className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 px-3 py-2 rounded-xl hover:bg-indigo-100 transition"
               >
-                <User className="w-3.5 h-3.5" /> {user.name.split(" ")[0]}
+                <User className="w-3.5 h-3.5" /> {user.name?.split(" ")[0] || "Account"}
               </Link>
               <button
                 onClick={onLogout}
@@ -64,6 +64,8 @@ export default function Navbar({ user, onLogout, cartCount, onOpenCart }) {
               Sign In
             </Link>
           )}
+
+          {user?.user_id && <span className="hidden sm:inline text-[10px] font-medium text-slate-500">ID: {user.user_id}</span>}
 
           {/* Cart Icon */}
           <button

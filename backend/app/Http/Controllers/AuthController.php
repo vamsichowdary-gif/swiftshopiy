@@ -11,27 +11,36 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validated = $request->validate([
+        $validated =$request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $user_id = 'SW' . rand(999999, 000000);
+        // Generate a 6-digit padded code (e.g., SW104928)
+        do {
+            $user_id = 'SW' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (User::where('user_id', $user_id)->exists());
 
         $user = User::create([
             'name' => $validated['name'],
             'user_id' => $user_id,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => 'Customer', // Public registration is always Customer
+            'role' => 'Customer',
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token =$user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Registration successful',
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'user_id' => $user->user_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role ?? 'Customer',
+            ],
             'token' => $token,
         ], 201);
     }
@@ -43,20 +52,21 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email',$request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password,$user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials do not match our records.'],
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token =$user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
             'user' => [
                 'id' => $user->id,
+                'user_id' => $user->user_id, // Returned to frontend for navbar & dashboard
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role ?? 'Customer',

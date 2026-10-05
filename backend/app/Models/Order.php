@@ -1,15 +1,28 @@
-<?php
-
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    protected $fillable = ['user_id', 'customer_name', 'customer_email', 'total', 'status'];
+    use HasFactory;
 
-    protected function casts(): array
+    protected $fillable = [
+        'user_id',
+        'customer_name',
+        'customer_email',
+        'total',
+        'status',
+        'items',
+    ];
+
+    protected $casts = [
+        'items' => 'array',
+        'total' => 'decimal:2',
+    ];
+
+    public function user()
     {
-        return ['total' => 'decimal:2'];
+        return $this->belongsTo(User::class);
     }
 }

@@ -169,7 +169,7 @@ export default function App() {
               path="/dashboard"
               element={
                 user && userRole === "customer" ? (
-                  <UserDashboard user={user} />
+                  <UserDashboard user={user} token={token} />
                 ) : (
                   <Navigate to="/login" replace />
                 )

@@ -1,14 +1,27 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
+import axios from "axios";
 
 export function ProfilePage() {
   const { user } = useOutletContext();
-  return <><h1 className="text-2xl font-bold">My profile</h1><p className="text-slate-500 mt-1 mb-7">Your account information</p><div className="max-w-lg space-y-4">{[["Full name", user.name], ["Email address", user.email]].map(([label, value]) => <label key={label} className="block text-sm font-medium text-slate-600">{label}<input readOnly value={value || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800" /></label>)}</div></>;
+  return <><h1 className="text-2xl font-bold">My profile</h1><p className="text-slate-500 mt-1 mb-7">Your account information</p><div className="max-w-lg space-y-4">{[["User ID", user.user_id || `#${user.id}`], ["Full name", user.name], ["Email address", user.email], ["Account role", user.role || "Customer"]].map(([label, value]) => <label key={label} className="block text-sm font-medium text-slate-600">{label}<input readOnly value={value || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800" /></label>)}</div></>;
 }
 
 export function OrdersPage() {
-  return <><h1 className="text-2xl font-bold">Order history</h1><p className="text-slate-500 mt-1">Your purchases and delivery updates</p><div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">No orders to show yet. Orders will appear here after checkout is connected.</div></>;
+  const { token } = useOutletContext();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    axios.get("https://swiftshopiy-backned.onrender.com/api/user/orders", { headers: { Authorization: `Bearer ${token}` } })
+      .then(({ data }) => setOrders(Array.isArray(data) ? data : data.data || []))
+      .catch(() => setError("Unable to load your orders right now."))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  return <><h1 className="text-2xl font-bold">Order history</h1><p className="text-slate-500 mt-1">Your purchases and delivery updates</p>{loading ? <p className="mt-8 text-slate-500">Loading orders…</p> : error ? <p role="alert" className="mt-8 text-rose-600">{error}</p> : orders.length ? <div className="mt-8 space-y-4">{orders.map(order => <article key={order.id} className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-wrap justify-between gap-3"><div><p className="font-bold">Order #{order.id}</p><p className="text-sm text-slate-500">{order.created_at?.slice(0, 10)}</p></div><div className="text-right"><p className="font-bold">${Number(order.total).toFixed(2)}</p><span className="text-sm text-indigo-700">{order.status}</span></div></div><ul className="mt-4 border-t pt-3 text-sm text-slate-600">{(order.items || []).map((item, index) => <li key={`${item.id || item.name}-${index}`}>{item.name} × {item.quantity || 1}</li>)}</ul></article>)}</div> : <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">No orders to show yet. Your purchases will appear here.</div>}</>;
 }
 
 export function AddressesPage() {
