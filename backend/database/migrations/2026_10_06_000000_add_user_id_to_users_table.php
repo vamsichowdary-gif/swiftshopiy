@@ -8,9 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('user_id', 16)->nullable()->unique()->after('role');
-        });
+        // Some deployed databases already have this column from an earlier
+        // version of the role migration, even though it is pending here.
+        if (!Schema::hasColumn('users', 'user_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('user_id', 16)->nullable()->unique()->after('role');
+            });
+        }
 
         // Backfill existing accounts while keeping generated IDs unique.
         \App\Models\User::query()->whereNull('user_id')->each(function ($user) {
@@ -24,9 +28,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropUnique(['user_id']);
-            $table->dropColumn('user_id');
-        });
+        // Keep user IDs intact: this column may have existed before this
+        // migration was introduced and contains account identifiers.
     }
 };
