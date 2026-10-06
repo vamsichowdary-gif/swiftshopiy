@@ -63,6 +63,11 @@ export default function AdminLayout({
       icon: Package,
     },
     {
+      id: "flash-deals",
+      label: "Flash Deals",
+      icon: Zap,
+    },
+    {
       id: "users",
       label: "Users",
       icon: Users,

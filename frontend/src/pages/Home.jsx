@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowDownRight, ArrowRight, Check, ChevronRight, Sparkles, Truck } from "lucide-react";
 import ProductCard from "../components/ProductCard";
+import FlashDealsSection from "../components/FlashDealsSection";
 
 const fallbackCategories = ["Electronics", "Accessories", "Home"];
 const fallbackHeroImage = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1400&q=85";
@@ -85,6 +86,9 @@ export default function Home({ products = [], onAddToCart }) {
             </Link>)}
           </div>
         </section>
+
+        {/* Dynamic Flash Deals Section - Controlled by Admin */}
+        <FlashDealsSection products={products} onAddToCart={onAddToCart} />
 
         <section id="featured" className="scroll-mt-28 py-4 sm:py-8">
           <div className="mb-7 flex items-end justify-between gap-4 sm:mb-9">

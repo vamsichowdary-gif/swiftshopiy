@@ -5,6 +5,7 @@ import Orders from "./Orders";
 import Products from "./Products";
 import Users from "./Users";
 import Support from "./Support";
+import FlashDealsManager from "./FlashDealsManager";
 import {
   fetchAdminOverview,
   fetchAdminOrders,
@@ -151,6 +152,10 @@ export default function AdminApp({ user, token, onLogout }) {
           onRefresh={loadProducts}
           loading={loading}
         />
+      )}
+
+      {activeTab === "flash-deals" && (
+        <FlashDealsManager token={token} />
       )}
 
       {activeTab === "users" && (

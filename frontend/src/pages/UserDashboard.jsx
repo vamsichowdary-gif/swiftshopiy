@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
+  LayoutDashboard,
   User,
   Package,
   MapPin,
@@ -14,8 +15,9 @@ import {
 } from "lucide-react";
 
 const navItems = [
+  { id: "", label: "Overall View", icon: LayoutDashboard },
+  { id: "orders", label: "My Orders", icon: Package },
   { id: "profile", label: "My Profile", icon: User },
-  { id: "orders", label: "Order History", icon: Package },
   { id: "addresses", label: "Delivery Addresses", icon: MapPin },
   { id: "support", label: "Contact Support", icon: LifeBuoy },
 ];
@@ -71,8 +73,9 @@ export default function UserDashboard({ user, token, onLogout }) {
         <div className="relative z-30 md:hidden bg-[#0d1424] border-b border-slate-800 p-4 space-y-1 animate-in slide-in-from-top-2">
           {navItems.map(({ id, label, icon: Icon }) => (
             <NavLink
-              key={id}
-              to={`/dashboard/${id}`}
+              key={id || "root"}
+              to={id ? `/dashboard/${id}` : "/dashboard"}
+              end={id === ""}
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
@@ -136,8 +139,9 @@ export default function UserDashboard({ user, token, onLogout }) {
             </p>
             {navItems.map(({ id, label, icon: Icon }) => (
               <NavLink
-                key={id}
-                to={`/dashboard/${id}`}
+                key={id || "root"}
+                to={id ? `/dashboard/${id}` : "/dashboard"}
+                end={id === ""}
                 className={({ isActive }) =>
                   `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
                     isActive

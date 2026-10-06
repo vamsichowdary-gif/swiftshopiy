@@ -26,6 +26,8 @@ import {
   AddressesPage,
   SupportPage,
 } from "./pages/CustomerPages";
+import DashboardOverview from "./pages/DashboardOverview";
+import NewsTicker from "./components/NewsTicker";
 
 // Dedicated Admin Portal
 import AdminApp from "./admin";
@@ -45,6 +47,7 @@ function StoreLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <NewsTicker theme="light" />
       <Navbar
         user={user}
         onLogout={onLogout}
@@ -282,9 +285,10 @@ export default function App() {
               )
             }
           >
-            <Route index element={<Navigate to="profile" replace />} />
-            <Route path="profile" element={<ProfilePage />} />
+            <Route index element={<DashboardOverview />} />
+            <Route path="overview" element={<DashboardOverview />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="addresses" element={<AddressesPage />} />
             <Route path="support" element={<SupportPage />} />
           </Route>

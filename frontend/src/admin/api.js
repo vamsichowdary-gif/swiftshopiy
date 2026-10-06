@@ -169,3 +169,123 @@ export async function deleteAdminProduct(token, productId) {
     throw err;
   }
 }
+
+// Upload Product Images (Supports Single and Multiple Images)
+export async function uploadProductImages(token, files) {
+  const formData = new FormData();
+  const fileList = Array.isArray(files) ? files : [files];
+
+  fileList.forEach((file) => {
+    formData.append("images[]", file);
+  });
+
+  const config = {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Content-Type": "multipart/form-data",
+      Accept: "application/json",
+    },
+  };
+
+  try {
+    const res = await axios.post(
+      `${API_BASE_URL}/admin/products/upload-images`,
+      formData,
+      config
+    );
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 405) {
+      const fallback = await axios.post(
+        `${API_BASE_URL}/upload-images`,
+        formData,
+        config
+      );
+      return fallback.data;
+    }
+    throw err;
+  }
+}
+
+// Bulk Import Products (CSV file or parsed JSON array)
+export async function bulkImportProducts(token, data) {
+  const isFile = data instanceof File;
+  let payload = data;
+  let headers = {
+    ...getAuthConfig(token).headers,
+  };
+
+  if (isFile) {
+    const formData = new FormData();
+    formData.append("file", data);
+    payload = formData;
+    headers["Content-Type"] = "multipart/form-data";
+  }
+
+  const config = { headers };
+
+  try {
+    const res = await axios.post(
+      `${API_BASE_URL}/admin/products/bulk-import`,
+      payload,
+      config
+    );
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 405) {
+      const fallback = await axios.post(
+        `${API_BASE_URL}/products/bulk-import`,
+        payload,
+        config
+      );
+      return fallback.data;
+    }
+    throw err;
+  }
+}
+
+// Flash Deals & News Ticker APIs
+export async function fetchPublicFlashDeals() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/flash-deals`);
+    return res.data;
+  } catch {
+    return { deals: [], news: [] };
+  }
+}
+
+export async function fetchAdminFlashDeals(token) {
+  const res = await axios.get(`${API_BASE_URL}/admin/flash-deals`, getAuthConfig(token));
+  return res.data;
+}
+
+export async function createAdminFlashDeal(token, deal) {
+  const res = await axios.post(`${API_BASE_URL}/admin/flash-deals`, deal, getAuthConfig(token));
+  return res.data;
+}
+
+export async function toggleAdminFlashDeal(token, dealId) {
+  const res = await axios.patch(`${API_BASE_URL}/admin/flash-deals/${dealId}/toggle`, {}, getAuthConfig(token));
+  return res.data;
+}
+
+export async function deleteAdminFlashDeal(token, dealId) {
+  const res = await axios.delete(`${API_BASE_URL}/admin/flash-deals/${dealId}`, getAuthConfig(token));
+  return res.data;
+}
+
+export async function createAdminNews(token, news) {
+  const res = await axios.post(`${API_BASE_URL}/admin/news`, news, getAuthConfig(token));
+  return res.data;
+}
+
+export async function toggleAdminNews(token, newsId) {
+  const res = await axios.patch(`${API_BASE_URL}/admin/news/${newsId}/toggle`, {}, getAuthConfig(token));
+  return res.data;
+}
+
+export async function deleteAdminNews(token, newsId) {
+  const res = await axios.delete(`${API_BASE_URL}/admin/news/${newsId}`, getAuthConfig(token));
+  return res.data;
+}
+

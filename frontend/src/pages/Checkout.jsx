@@ -81,14 +81,20 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
 
   if (orderComplete && placedOrder) {
     return (
-      <div className="py-8 px-4">
-        <OrderSuccessTicket
-          order={placedOrder}
-          customer={user || { name: formData.name, email: formData.email }}
-          onViewOrders={() => navigate("/dashboard/orders")}
-          onContinueShopping={() => navigate("/shop")}
-        />
-      </div>
+      <main className="min-h-[90vh] bg-[#faf9f6] text-slate-950 py-12 px-4 relative overflow-hidden flex flex-col justify-center">
+        {/* Subtle Luxury Ambient Mesh Glow matching Store Palette */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-[#e3eae1]/70 via-[#f0f4ee]/30 to-transparent rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 max-w-xl mx-auto w-full">
+          <OrderSuccessTicket
+            order={placedOrder}
+            customer={user || { name: formData.name, email: formData.email }}
+            onViewOrders={() => navigate("/dashboard/orders")}
+            onContinueShopping={() => navigate("/shop")}
+            cutoutBg="bg-[#faf9f6]"
+          />
+        </div>
+      </main>
     );
   }
 

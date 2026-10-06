@@ -8,6 +8,7 @@ export default function OrderSuccessTicket({
   customer = {},
   onContinueShopping,
   onViewOrders,
+  cutoutBg = "bg-[#faf9f6]",
 }) {
   const { orderIdFormatted, invoiceId, barcodeCode } = generateOrderIdentifiers(order?.id);
 
@@ -51,8 +52,8 @@ export default function OrderSuccessTicket({
       {/* Ticket Card with Notches */}
       <div className="relative bg-[#111827] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800 overflow-hidden">
         {/* Left and Right Ticket Cutout Notches */}
-        <div className="absolute top-1/2 -left-4 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-50 border border-slate-300/40 z-20 pointer-events-none" />
-        <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-50 border border-slate-300/40 z-20 pointer-events-none" />
+        <div className={`absolute top-1/2 -left-4 -translate-y-1/2 w-8 h-8 rounded-full ${cutoutBg} border border-slate-300/40 z-20 pointer-events-none shadow-inner`} />
+        <div className={`absolute top-1/2 -right-4 -translate-y-1/2 w-8 h-8 rounded-full ${cutoutBg} border border-slate-300/40 z-20 pointer-events-none shadow-inner`} />
 
         {/* Top Header with glowing checkmark */}
         <div className="text-center pt-2 pb-6 border-b border-dashed border-slate-800">

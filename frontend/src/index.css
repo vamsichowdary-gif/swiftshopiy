@@ -14,3 +14,17 @@
 .animate-ambient-sweep {
   animation: ambient-sweep 18s ease-in-out infinite alternate;
 }
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+

@@ -233,6 +233,7 @@ export function OrdersPage() {
                 }
               }
               onContinueShopping={() => setSelectedTicketOrder(null)}
+              cutoutBg="bg-[#0b101c]"
             />
           </div>
         </div>
