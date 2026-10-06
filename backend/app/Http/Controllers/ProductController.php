@@ -26,6 +26,9 @@ class ProductController extends Controller
             'description' => 'required|string',
         ]);
 
+        $validated['rating'] = isset($validated['rating']) && $validated['rating'] !== '' ? $validated['rating'] : 5.0;
+        $validated['reviews'] = isset($validated['reviews']) && $validated['reviews'] !== '' ? $validated['reviews'] : 0;
+
         $product = Product::create($validated);
         return response()->json($product, 201);
     }

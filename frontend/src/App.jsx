@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
 import axios from "axios";
 
-// Components & Pages
+// Customer Components & Pages
 import Navbar from "./components/Navbar";
 import CartDrawer from "./components/CartDrawer";
 import Home from "./pages/Home";
@@ -14,8 +20,52 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Checkout from "./pages/Checkout";
 import UserDashboard from "./pages/UserDashboard";
-import AdminDashboard from "./AdminPanel";
-import { ProfilePage, OrdersPage, AddressesPage, SupportPage } from "./pages/CustomerPages";
+import {
+  ProfilePage,
+  OrdersPage,
+  AddressesPage,
+  SupportPage,
+} from "./pages/CustomerPages";
+
+// Dedicated Admin Portal
+import AdminApp from "./admin";
+import AdminLogin from "./admin/AdminLogin";
+import { API_BASE_URL } from "./admin/api";
+
+function StoreLayout({
+  user,
+  onLogout,
+  cartCount,
+  onOpenCart,
+  isCartOpen,
+  onCloseCart,
+  cart,
+  onUpdateQty,
+  onRemoveItem,
+}) {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <Navbar
+        user={user}
+        onLogout={onLogout}
+        cartCount={cartCount}
+        onOpenCart={onOpenCart}
+      />
+
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={onCloseCart}
+        cartItems={cart}
+        onUpdateQty={onUpdateQty}
+        onRemoveItem={onRemoveItem}
+      />
+
+      <div className="flex-1">
+        <Outlet />
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -42,7 +92,7 @@ export default function App() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("https://swiftshopiy-backned.onrender.com/api/products");
+      const res = await axios.get(`${API_BASE_URL}/products`);
       const data = res.data;
       const productList = Array.isArray(data)
         ? data
@@ -98,7 +148,9 @@ export default function App() {
       return;
     }
     setCart((prev) =>
-      prev.map((item) => (item.id === productId ? { ...item, qty: newQty } : item))
+      prev.map((item) =>
+        item.id === productId ? { ...item, qty: newQty } : item
+      )
     );
   };
 
@@ -120,88 +172,126 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-        <Navbar
-          user={user}
-          onLogout={handleLogout}
-          cartCount={totalCartCount}
-          onOpenCart={() => setIsCartOpen(true)}
+      <Routes>
+        {/* Customer Store Layout - Includes Customer Navbar and Cart Drawer */}
+        <Route
+          element={
+            <StoreLayout
+              user={user}
+              onLogout={handleLogout}
+              cartCount={totalCartCount}
+              onOpenCart={() => setIsCartOpen(true)}
+              isCartOpen={isCartOpen}
+              onCloseCart={() => setIsCartOpen(false)}
+              cart={cart}
+              onUpdateQty={updateCartQty}
+              onRemoveItem={removeFromCart}
+            />
+          }
+        >
+          <Route
+            path="/"
+            element={<Home products={products} onAddToCart={addToCart} />}
+          />
+          <Route
+            path="/shop"
+            element={
+              <Shop
+                products={products}
+                loading={loading}
+                onAddToCart={addToCart}
+              />
+            }
+          />
+          <Route path="/about" element={<About />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route
+            path="/login"
+            element={<Login onAuthSuccess={handleAuthSuccess} />}
+          />
+          <Route
+            path="/register"
+            element={<Register onAuthSuccess={handleAuthSuccess} />}
+          />
+
+          {/* Checkout Route */}
+          <Route
+            path="/checkout"
+            element={
+              <Checkout
+                cart={cart}
+                onClearCart={clearCart}
+                user={user}
+                token={token}
+              />
+            }
+          />
+
+          {/* Protected Customer Dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              user && userRole === "customer" ? (
+                <UserDashboard user={user} token={token} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          >
+            <Route index element={<Navigate to="profile" replace />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="addresses" element={<AddressesPage />} />
+            <Route path="support" element={<SupportPage />} />
+          </Route>
+        </Route>
+
+        {/* Dedicated Admin Portal Routes - Direct URL access, No Customer Navbar */}
+        <Route
+          path="/admin/login"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <AdminLogin onAuthSuccess={handleAuthSuccess} />
+            )
+          }
         />
 
-        {/* Render CartDrawer */}
-        <CartDrawer
-          isOpen={isCartOpen}
-          onClose={() => setIsCartOpen(false)}
-          cartItems={cart}
-          onUpdateQty={updateCartQty}
-          onRemoveItem={removeFromCart}
+        <Route
+          path="/admin"
+          element={
+            isAdmin ? (
+              <AdminApp
+                user={user}
+                token={token}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Navigate to="/admin/login" replace />
+            )
+          }
         />
 
-        <div className="flex-1">
-          <Routes>
-            <Route path="/" element={<Home products={products} onAddToCart={addToCart} />} />
-            <Route
-              path="/shop"
-              element={<Shop products={products} loading={loading} onAddToCart={addToCart} />}
-            />
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/login" element={<Login onAuthSuccess={handleAuthSuccess} />} />
-            <Route path="/admin/login" element={<Login onAuthSuccess={handleAuthSuccess} adminMode />} />
-            <Route path="/register" element={<Register onAuthSuccess={handleAuthSuccess} />} />
+        <Route
+          path="/admin/*"
+          element={
+            isAdmin ? (
+              <AdminApp
+                user={user}
+                token={token}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Navigate to="/admin/login" replace />
+            )
+          }
+        />
 
-            {/* Checkout Route */}
-            <Route
-              path="/checkout"
-              element={
-                <Checkout
-                  cart={cart}
-                  onClearCart={clearCart}
-                  user={user}
-                  token={token}
-                />
-              }
-            />
-
-            {/* Protected Customer Dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                user && userRole === "customer" ? (
-                  <UserDashboard user={user} token={token} />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              }
-            >
-              <Route index element={<Navigate to="profile" replace />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="addresses" element={<AddressesPage />} />
-              <Route path="support" element={<SupportPage />} />
-            </Route>
-
-            {/* Admin Dashboard */}
-            <Route
-              path="/admin"
-              element={
-                isAdmin ? (
-                  <AdminDashboard
-                    token={token}
-                    onLogout={handleLogout}
-                    onBackToStore={() => {
-                      window.location.href = "/";
-                    }}
-                  />
-                ) : (
-                  <Navigate to="/admin/login" replace />
-                )
-              }
-            />
-          </Routes>
-        </div>
-      </div>
+        {/* Fallback to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
