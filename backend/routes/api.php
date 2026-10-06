@@ -16,13 +16,14 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
 
+// Public Checkout (resolves user if auth token present or email matches)
+Route::post('/checkout', [OrderController::class, 'store']);
+
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']); // Useful for frontend auth state
 
-    // Authenticated Checkout
-    Route::post('/checkout', [OrderController::class, 'store']);
     Route::get('/user/orders', [OrderController::class, 'userOrders']);
     Route::get('/user/support-tickets', [SupportController::class, 'index']);
     Route::post('/user/support-tickets', [SupportController::class, 'store']);

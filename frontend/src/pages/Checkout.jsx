@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { CheckCircle2, ShieldCheck, ShoppingBag } from "lucide-react";
+import { CheckCircle2, ShieldCheck, ShoppingBag, FileText, ArrowRight } from "lucide-react";
+import { openInvoice } from "../utils/invoice";
 
 export default function Checkout({ cart = [], onClearCart, user, token }) {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [orderComplete, setOrderComplete] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
 
   const subtotal = cart.reduce((sum, item) => {
     const qty = item.qty ?? item.quantity ?? 1;
@@ -45,12 +47,26 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
           name: item.name,
           price: item.price,
           quantity: item.qty ?? item.quantity ?? 1,
+          image: item.image || "",
         })),
       };
 
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.post("https://swiftshopiy-backned.onrender.com/api/checkout", payload, config);
+      const authToken = token || localStorage.getItem("token");
+      const config = {
+        headers: {
+          Accept: "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+      };
 
+      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/checkout", payload, config);
+      const createdOrder = res.data?.order || {
+        ...payload,
+        id: res.data?.id || Date.now(),
+        created_at: new Date().toISOString(),
+      };
+
+      setPlacedOrder(createdOrder);
       onClearCart();
       setOrderComplete(true);
     } catch (err) {
@@ -66,16 +82,43 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
       <div className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-200 rounded-3xl text-center shadow-sm">
         <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-slate-900">Order Confirmed!</h2>
-        <p className="text-sm text-slate-500 mt-2">
+        {placedOrder?.id && (
+          <p className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 inline-block px-3 py-1 rounded-full mt-2">
+            Order #{placedOrder.id}
+          </p>
+        )}
+        <p className="text-sm text-slate-500 mt-3">
           Thank you for your purchase. We have received your order and sent confirmation to{" "}
           <span className="font-semibold text-slate-800">{formData.email}</span>.
         </p>
-        <button
-          onClick={() => navigate("/shop")}
-          className="mt-6 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition shadow-sm"
-        >
-          Continue Shopping
-        </button>
+
+        {/* Action Buttons */}
+        <div className="mt-6 space-y-2.5">
+          {placedOrder && (
+            <button
+              onClick={() => openInvoice(placedOrder, user || { name: formData.name, email: formData.email })}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              Download / Print Invoice
+            </button>
+          )}
+
+          <button
+            onClick={() => navigate("/dashboard/orders")}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>View in Order History</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => navigate("/shop")}
+            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition cursor-pointer"
+          >
+            Continue Shopping
+          </button>
+        </div>
       </div>
     );
   }

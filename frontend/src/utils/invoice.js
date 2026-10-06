@@ -13,7 +13,17 @@ export function openInvoice(order, customer = {}) {
     return;
   }
 
-  const items = Array.isArray(order.items) ? order.items : [];
+  let items = [];
+  if (Array.isArray(order?.items)) {
+    items = order.items;
+  } else if (typeof order?.items === "string") {
+    try {
+      items = JSON.parse(order.items);
+    } catch (e) {
+      items = [];
+    }
+  }
+
   const rows = items.map((item) => {
     const quantity = Number(item.quantity ?? item.qty ?? 1);
     const price = Number(item.price ?? 0);

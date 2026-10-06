@@ -15,7 +15,21 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
         ]);
 
-        $userId = $request->user('sanctum')?->id ?? auth('sanctum')->id();
+        $userId = null;
+        try {
+            if ($request->bearerToken()) {
+                $userId = auth('sanctum')->user()?->id;
+            }
+        } catch (\Throwable $e) {
+            $userId = null;
+        }
+
+        if (!$userId && $request->filled('customer_email')) {
+            $existingUser = \App\Models\User::whereRaw('LOWER(email) = ?', [strtolower($request->customer_email)])->first();
+            if ($existingUser) {
+                $userId = $existingUser->id;
+            }
+        }
 
         $order = Order::create([
             'user_id'        => $userId,
@@ -35,9 +49,15 @@ class OrderController extends Controller
     // Fetch user-specific orders for UserDashboard
     public function userOrders(Request $request)
     {
-        $orders = Order::where('user_id', $request->user()->id)
-            ->latest()
-            ->paginate(10);
+        $user = $request->user();
+        $orders = Order::where(function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+            if ($user->email) {
+                $query->orWhereRaw('LOWER(customer_email) = ?', [strtolower($user->email)]);
+            }
+        })
+        ->latest()
+        ->paginate(15);
 
         return response()->json($orders);
     }

@@ -26,15 +26,113 @@ export function OrdersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    axios.get(`${API_URL}/user/orders`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(({ data }) => setOrders(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setError("Unable to load your orders right now."))
+    const authToken = token || localStorage.getItem("token");
+    if (!authToken) {
+      setError("Please sign in to view your orders.");
+      setLoading(false);
+      return;
+    }
+
+    axios.get(`${API_URL}/user/orders`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        Accept: "application/json",
+      },
+    })
+      .then(({ data }) => {
+        const orderList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
+        setOrders(orderList);
+      })
+      .catch((err) => {
+        console.error("Order load error:", err);
+        setError(err.response?.data?.message || "Unable to load your orders right now.");
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
-  return <><h1 className="text-2xl font-bold">Order history</h1><p className="text-slate-500 mt-1">Your purchases and delivery updates</p>
-    {loading ? <p className="mt-8 text-slate-500">Loading orders...</p> : error ? <p role="alert" className="mt-8 text-rose-600">{error}</p> : orders.length ? <div className="mt-8 space-y-4">{orders.map(order => <article key={order.id} className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold">Order #{order.id}</p><p className="text-sm text-slate-500">{order.created_at?.slice(0, 10)}</p></div><div className="flex items-center gap-3"><div className="text-right"><p className="font-bold">${Number(order.total).toFixed(2)}</p><span className="text-sm text-indigo-700">{order.status}</span></div><button onClick={() => openInvoice(order, user)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Invoice</button></div></div><ul className="mt-4 border-t pt-3 text-sm text-slate-600">{(order.items || []).map((item, index) => <li key={`${item.id || item.name}-${index}`}>{item.name} × {item.quantity || item.qty || 1}</li>)}</ul></article>)}</div> : <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">No orders to show yet. Your purchases will appear here.</div>}
-  </>;
+  return (
+    <>
+      <h1 className="text-2xl font-bold">Order history</h1>
+      <p className="text-slate-500 mt-1">Your purchases and delivery updates</p>
+      {loading ? (
+        <p className="mt-8 text-slate-500">Loading orders...</p>
+      ) : error ? (
+        <p role="alert" className="mt-8 text-rose-600 font-medium bg-rose-50 border border-rose-200 p-4 rounded-xl text-xs">
+          {error}
+        </p>
+      ) : orders.length ? (
+        <div className="mt-8 space-y-4">
+          {orders.map((order) => {
+            const items = Array.isArray(order.items)
+              ? order.items
+              : typeof order.items === "string"
+              ? JSON.parse(order.items || "[]")
+              : [];
+
+            return (
+              <article key={order.id} className="rounded-2xl border border-slate-200 p-5 bg-white shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-slate-900">Order #{order.id}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {order.created_at?.slice(0, 10) || "Recent"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-bold text-slate-900">
+                        ${Number(order.total || 0).toFixed(2)}
+                      </p>
+                      <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                        {order.status || "Pending"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        openInvoice(
+                          order,
+                          user || {
+                            name: order.customer_name,
+                            email: order.customer_email,
+                          }
+                        )
+                      }
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition cursor-pointer"
+                    >
+                      Download Invoice
+                    </button>
+                  </div>
+                </div>
+
+                {items.length > 0 && (
+                  <ul className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600 space-y-1">
+                    {items.map((item, index) => (
+                      <li key={`${item.id || item.name}-${index}`} className="flex items-center justify-between">
+                        <span>
+                          {item.name || `Item #${index + 1}`} × {item.quantity || item.qty || 1}
+                        </span>
+                        <span className="font-medium text-slate-800">
+                          ${(Number(item.price || 0) * Number(item.quantity || item.qty || 1)).toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+          No orders to show yet. Your purchases will appear here.
+        </div>
+      )}
+    </>
+  );
 }
 
 export function AddressesPage() {

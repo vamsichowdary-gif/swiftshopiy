@@ -16,9 +16,9 @@ class AdminController extends Controller
         return response()->json([
             'total_orders' => Order::count(),
             'total_revenue' => Order::where('status', '!=', 'Cancelled')->sum('total'),
-            'total_users' => User::where('role', 'Customer')->count(),
+            'total_users' => User::whereRaw('LOWER(role) = ?', ['customer'])->count(),
             'status_counts' => $counts,
-            'recent_orders' => Order::latest()->limit(8)->get(),
+            'recent_orders' => Order::with('user:id,user_id,name,email')->latest()->limit(8)->get(),
         ]);
     }
 
