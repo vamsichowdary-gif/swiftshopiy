@@ -1,100 +1,180 @@
-import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
-import { User, Package, MapPin, LifeBuoy } from "lucide-react";
+import React, { useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  User,
+  Package,
+  MapPin,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  X,
+  ShieldCheck,
+  Sparkles,
+  ChevronRight,
+} from "lucide-react";
 
-const links = [
-  ["profile", "My Profile", User],
-  ["orders", "Order History", Package],
-  ["addresses", "Addresses", MapPin],
-  ["support", "Contact Support", LifeBuoy],
+const navItems = [
+  { id: "profile", label: "My Profile", icon: User },
+  { id: "orders", label: "Order History", icon: Package },
+  { id: "addresses", label: "Delivery Addresses", icon: MapPin },
+  { id: "support", label: "Contact Support", icon: LifeBuoy },
 ];
 
-export default function UserDashboard({ user, token }) {
-  return (
-    <div className="relative min-h-[calc(100vh-4rem)] bg-[#030712] md:flex overflow-hidden">
-      {/* 1. Self-contained CSS Animation */}
-      <style>{`
-        @keyframes sweepGlow {
-          0% {
-            transform: translate(-30%, -30%) rotate(0deg) scale(1);
-          }
-          50% {
-            transform: translate(-10%, -10%) rotate(180deg) scale(1.3);
-          }
-          100% {
-            transform: translate(-30%, -30%) rotate(360deg) scale(1);
-          }
-        }
-        .anim-sweep {
-          animation: sweepGlow 12s ease-in-out infinite alternate;
-        }
-      `}</style>
+export default function UserDashboard({ user, token, onLogout }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
-      {/* 2. High-contrast sweeping light beams (Visible in background) */}
+  const handleSignOut = () => {
+    if (onLogout) onLogout();
+    navigate("/");
+  };
+
+  const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "U";
+  const displayUid = user?.user_id || (user?.id ? `SW${String(user.id).padStart(6, "0")}` : "SW-MEMBER");
+
+  return (
+    <div className="relative min-h-[calc(100vh-4.5rem)] bg-[#070b14] text-slate-100 flex flex-col font-sans overflow-hidden">
+      {/* Dynamic Animated Ambient Mesh Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div
-          className="anim-sweep absolute -top-1/2 -left-1/2 w-[220%] h-[220%] blur-[70px] opacity-75"
-          style={{
-            background:
-              "conic-gradient(from 0deg at 50% 50%, #030712 0deg, #2563eb 60deg, #93c5fd 105deg, #030712 160deg, #7c3aed 240deg, #c084fc 285deg, #030712 360deg)",
-          }}
-        />
-        {/* Soft grid/ambient overlay */}
-        <div className="absolute inset-0 bg-[#030712]/50 backdrop-blur-[35px]" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "8s" }} />
+        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "11s" }} />
+        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "9s" }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]" />
       </div>
 
-      {/* 3. Translucent Sidebar so animation shows at the edges */}
-      <aside className="relative z-10 w-full md:w-64 shrink-0 bg-slate-950/60 backdrop-blur-xl border-r border-white/10 text-slate-300 md:min-h-[calc(100vh-4rem)] p-5 flex flex-col">
-        <div className="flex items-center gap-3 px-2 pb-7 border-b border-white/10">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white grid place-items-center font-black text-xl shadow-lg shadow-blue-500/25">
-            S
+      {/* Mobile Top Navigation Bar */}
+      <div className="relative z-20 md:hidden bg-[#0d1424]/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 grid place-items-center text-white font-bold text-xs shadow-md shadow-blue-500/25">
+            {userInitial}
           </div>
           <div>
-            <p className="font-bold text-white text-lg tracking-tight">SwiftShop</p>
-            <p className="text-[11px] text-slate-400 font-medium">CUSTOMER ACCOUNT</p>
+            <p className="text-xs font-bold text-white truncate max-w-[160px]">
+              {user?.name || "Customer Portal"}
+            </p>
+            <p className="text-[10px] text-blue-400 font-mono">{displayUid}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-2 py-6">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 grid place-items-center text-white font-bold shadow-md shadow-purple-500/25">
-            {user?.name?.[0] || "U"}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{user?.name || "new one"}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.user_id || `#${user?.id || "SW127568"}`}</p>
-          </div>
-        </div>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#172138] border border-slate-700/60 text-xs font-semibold text-slate-200"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={15} /> : <Menu size={15} />}
+          <span>Menu</span>
+        </button>
+      </div>
 
-        <p className="text-[10px] uppercase tracking-[.18em] text-slate-400 font-bold mb-3 px-3">
-          Your account
-        </p>
-
-        <nav className="space-y-2">
-          {links.map(([to, label, Icon]) => (
+      {/* Mobile Dropdown Menu Drawer */}
+      {mobileMenuOpen && (
+        <div className="relative z-30 md:hidden bg-[#0d1424] border-b border-slate-800 p-4 space-y-1 animate-in slide-in-from-top-2">
+          {navItems.map(({ id, label, icon: Icon }) => (
             <NavLink
-              key={to}
-              to={`/dashboard/${to}`}
+              key={id}
+              to={`/dashboard/${id}`}
+              onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
                   isActive
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-900/50"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                    : "text-slate-300 hover:bg-slate-800/60"
                 }`
               }
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <div className="flex items-center gap-2.5">
+                <Icon size={16} />
+                <span>{label}</span>
+              </div>
+              <ChevronRight size={13} className="text-slate-500" />
             </NavLink>
           ))}
-        </nav>
-      </aside>
-
-      {/* 4. Main Area with Glassmorphism so background beam shines through */}
-      <main className="relative z-10 flex-1 min-w-0 p-4 sm:p-8 lg:p-10">
-        <div className="max-w-5xl mx-auto bg-slate-900/40 backdrop-blur-2xl p-6 sm:p-8 lg:p-10 rounded-3xl border border-white/10 shadow-2xl min-h-[450px]">
-          <Outlet context={{ user, token }} />
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-rose-400 hover:bg-rose-950/20 rounded-xl transition text-left cursor-pointer"
+          >
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
         </div>
-      </main>
+      )}
+
+      {/* Main Dashboard Layout */}
+      <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col md:flex-row gap-6 lg:gap-8">
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden md:flex flex-col w-64 lg:w-72 shrink-0 bg-[#0e1628]/80 backdrop-blur-2xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl">
+          {/* User Profile Card */}
+          <div className="pb-6 border-b border-slate-800/80">
+            <div className="flex items-center gap-3.5">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 grid place-items-center text-white font-bold text-lg shadow-lg shadow-blue-500/25">
+                  {userInitial}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-[#0e1628] grid place-items-center">
+                  <ShieldCheck size={10} className="text-white" />
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm text-white truncate">
+                  {user?.name || "Customer"}
+                </h3>
+                <p className="text-[11px] text-blue-400 font-mono font-semibold">
+                  {displayUid}
+                </p>
+                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <Sparkles size={9} /> Verified Customer
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="py-4 space-y-1.5 flex-1">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500 px-3 mb-2">
+              Navigation
+            </p>
+            {navItems.map(({ id, label, icon: Icon }) => (
+              <NavLink
+                key={id}
+                to={`/dashboard/${id}`}
+                className={({ isActive }) =>
+                  `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-900/40"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                  }`
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <Icon size={16} className="shrink-0" />
+                  <span>{label}</span>
+                </div>
+                <ChevronRight
+                  size={13}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Sign Out Button */}
+          <div className="pt-4 border-t border-slate-800/80">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/40 transition cursor-pointer"
+            >
+              <LogOut size={15} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Content Outlet Area with Modern Clean Glass Card */}
+        <main className="flex-1 min-w-0 bg-[#0e1628]/80 backdrop-blur-2xl border border-slate-800/80 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl overflow-hidden min-h-[500px]">
+          <Outlet context={{ user, token }} />
+        </main>
+      </div>
     </div>
   );
 }

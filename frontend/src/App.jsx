@@ -68,11 +68,32 @@ function StoreLayout({
 }
 
 export default function App() {
+  // Separate Customer (User) Session
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem("swiftshop_user") || localStorage.getItem("user");
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
-  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [token, setToken] = useState(
+    () => localStorage.getItem("swiftshop_token") || localStorage.getItem("token") || ""
+  );
+
+  // Separate Admin Session
+  const [adminUser, setAdminUser] = useState(() => {
+    const saved = localStorage.getItem("swiftshop_admin_user");
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [adminToken, setAdminToken] = useState(
+    () => localStorage.getItem("swiftshop_admin_token") || ""
+  );
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,18 +134,36 @@ export default function App() {
     fetchProducts();
   }, []);
 
-  const handleAuthSuccess = (userData, userToken) => {
+  const handleUserAuthSuccess = (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
+    localStorage.setItem("swiftshop_user", JSON.stringify(userData));
+    localStorage.setItem("swiftshop_token", userToken);
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", userToken);
   };
 
-  const handleLogout = () => {
+  const handleUserLogout = () => {
     setUser(null);
     setToken("");
+    localStorage.removeItem("swiftshop_user");
+    localStorage.removeItem("swiftshop_token");
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+  };
+
+  const handleAdminAuthSuccess = (adminData, adminTokenVal) => {
+    setAdminUser(adminData);
+    setAdminToken(adminTokenVal);
+    localStorage.setItem("swiftshop_admin_user", JSON.stringify(adminData));
+    localStorage.setItem("swiftshop_admin_token", adminTokenVal);
+  };
+
+  const handleAdminLogout = () => {
+    setAdminUser(null);
+    setAdminToken("");
+    localStorage.removeItem("swiftshop_admin_user");
+    localStorage.removeItem("swiftshop_admin_token");
   };
 
   // Add item or increment qty
@@ -166,9 +205,13 @@ export default function App() {
 
   const totalCartCount = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
 
-  // Normalize role matching (case-insensitive)
-  const userRole = user?.role?.toLowerCase();
-  const isAdmin = userRole === "admin" || userRole === "super admin";
+  // Normalize roles
+  const userRole = (user?.role || "customer").toLowerCase();
+  const adminRole = (adminUser?.role || "").toLowerCase();
+  const isAdmin =
+    Boolean(adminToken) &&
+    Boolean(adminUser) &&
+    ["admin", "super admin"].includes(adminRole);
 
   return (
     <BrowserRouter>
@@ -178,7 +221,7 @@ export default function App() {
           element={
             <StoreLayout
               user={user}
-              onLogout={handleLogout}
+              onLogout={handleUserLogout}
               cartCount={totalCartCount}
               onOpenCart={() => setIsCartOpen(true)}
               isCartOpen={isCartOpen}
@@ -208,11 +251,11 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route
             path="/login"
-            element={<Login onAuthSuccess={handleAuthSuccess} />}
+            element={<Login onAuthSuccess={handleUserAuthSuccess} />}
           />
           <Route
             path="/register"
-            element={<Register onAuthSuccess={handleAuthSuccess} />}
+            element={<Register onAuthSuccess={handleUserAuthSuccess} />}
           />
 
           {/* Checkout Route */}
@@ -232,8 +275,8 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              user && userRole === "customer" ? (
-                <UserDashboard user={user} token={token} />
+              user ? (
+                <UserDashboard user={user} token={token} onLogout={handleUserLogout} />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -254,7 +297,7 @@ export default function App() {
             isAdmin ? (
               <Navigate to="/admin" replace />
             ) : (
-              <AdminLogin onAuthSuccess={handleAuthSuccess} />
+              <AdminLogin onAuthSuccess={handleAdminAuthSuccess} />
             )
           }
         />
@@ -264,9 +307,9 @@ export default function App() {
           element={
             isAdmin ? (
               <AdminApp
-                user={user}
-                token={token}
-                onLogout={handleLogout}
+                user={adminUser}
+                token={adminToken}
+                onLogout={handleAdminLogout}
               />
             ) : (
               <Navigate to="/admin/login" replace />
@@ -279,9 +322,9 @@ export default function App() {
           element={
             isAdmin ? (
               <AdminApp
-                user={user}
-                token={token}
-                onLogout={handleLogout}
+                user={adminUser}
+                token={adminToken}
+                onLogout={handleAdminLogout}
               />
             ) : (
               <Navigate to="/admin/login" replace />

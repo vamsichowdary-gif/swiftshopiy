@@ -4,6 +4,8 @@ import axios from "axios";
 import { CheckCircle2, ShieldCheck, ShoppingBag, FileText, ArrowRight } from "lucide-react";
 import { openInvoice } from "../utils/invoice";
 
+import OrderSuccessTicket from "../components/OrderSuccessTicket";
+
 export default function Checkout({ cart = [], onClearCart, user, token }) {
   const navigate = useNavigate();
 
@@ -51,7 +53,7 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
         })),
       };
 
-      const authToken = token || localStorage.getItem("token");
+      const authToken = token || localStorage.getItem("token") || localStorage.getItem("swiftshop_token");
       const config = {
         headers: {
           Accept: "application/json",
@@ -77,48 +79,15 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
     }
   };
 
-  if (orderComplete) {
+  if (orderComplete && placedOrder) {
     return (
-      <div className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-200 rounded-3xl text-center shadow-sm">
-        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-slate-900">Order Confirmed!</h2>
-        {placedOrder?.id && (
-          <p className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 inline-block px-3 py-1 rounded-full mt-2">
-            Order #{placedOrder.id}
-          </p>
-        )}
-        <p className="text-sm text-slate-500 mt-3">
-          Thank you for your purchase. We have received your order and sent confirmation to{" "}
-          <span className="font-semibold text-slate-800">{formData.email}</span>.
-        </p>
-
-        {/* Action Buttons */}
-        <div className="mt-6 space-y-2.5">
-          {placedOrder && (
-            <button
-              onClick={() => openInvoice(placedOrder, user || { name: formData.name, email: formData.email })}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <FileText className="w-4 h-4" />
-              Download / Print Invoice
-            </button>
-          )}
-
-          <button
-            onClick={() => navigate("/dashboard/orders")}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>View in Order History</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => navigate("/shop")}
-            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition cursor-pointer"
-          >
-            Continue Shopping
-          </button>
-        </div>
+      <div className="py-8 px-4">
+        <OrderSuccessTicket
+          order={placedOrder}
+          customer={user || { name: formData.name, email: formData.email }}
+          onViewOrders={() => navigate("/dashboard/orders")}
+          onContinueShopping={() => navigate("/shop")}
+        />
       </div>
     );
   }

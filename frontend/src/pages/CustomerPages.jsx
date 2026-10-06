@@ -1,22 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText, Package, MapPin, Send, MessageSquare, CheckCircle2, Clock, Ticket, X } from "lucide-react";
 import axios from "axios";
 import { openInvoice } from "../utils/invoice";
+import OrderSuccessTicket from "../components/OrderSuccessTicket";
 
-const API_URL = "https://swiftshopiy-backned.onrender.com/api";
+const API_URL =
+  import.meta.env?.VITE_API_URL || "https://swiftshopiy-backned.onrender.com/api";
 
 export function ProfilePage() {
   const { user } = useOutletContext();
   const fields = [
-    ["User ID", user.user_id || `#${user.id}`],
-    ["Username", user.username],
-    ["Full name", user.name],
-    ["Email address", user.email],
-    ["Account role", user.role || "Customer"],
+    ["Customer ID", user?.user_id || (user?.id ? `SW${String(user.id).padStart(6, "0")}` : "SW-MEMBER")],
+    ["Username", user?.username ? `@${user.username}` : "—"],
+    ["Full Name", user?.name || "Customer"],
+    ["Email Address", user?.email || "—"],
+    ["Account Tier", "Verified Customer"],
   ];
 
-  return <><h1 className="text-2xl font-bold">My profile</h1><p className="text-slate-500 mt-1 mb-7">Your account information</p><div className="max-w-lg space-y-4">{fields.map(([label, value]) => <label key={label} className="block text-sm font-medium text-slate-600">{label}<input readOnly value={value || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800" /></label>)}</div></>;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">My Profile</h1>
+        <p className="text-xs text-slate-400 mt-1">Manage your customer credentials and account information</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+        {fields.map(([label, value]) => (
+          <div key={label} className="bg-[#131d33] border border-slate-800 rounded-2xl p-4">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block mb-1">
+              {label}
+            </span>
+            <span className="text-sm font-semibold text-white block truncate">
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function OrdersPage() {
@@ -24,21 +46,23 @@ export function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedTicketOrder, setSelectedTicketOrder] = useState(null);
 
   useEffect(() => {
-    const authToken = token || localStorage.getItem("token");
+    const authToken = token || localStorage.getItem("token") || localStorage.getItem("swiftshop_token");
     if (!authToken) {
       setError("Please sign in to view your orders.");
       setLoading(false);
       return;
     }
 
-    axios.get(`${API_URL}/user/orders`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        Accept: "application/json",
-      },
-    })
+    axios
+      .get(`${API_URL}/user/orders`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          Accept: "application/json",
+        },
+      })
       .then(({ data }) => {
         const orderList = Array.isArray(data)
           ? data
@@ -55,42 +79,76 @@ export function OrdersPage() {
   }, [token]);
 
   return (
-    <>
-      <h1 className="text-2xl font-bold">Order history</h1>
-      <p className="text-slate-500 mt-1">Your purchases and delivery updates</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Order History</h1>
+        <p className="text-xs text-slate-400 mt-1">Review your purchases, delivery statuses, and official invoices</p>
+      </div>
+
       {loading ? (
-        <p className="mt-8 text-slate-500">Loading orders...</p>
+        <div className="py-16 text-center text-slate-400">
+          <Clock className="mx-auto text-blue-500 animate-spin mb-2" size={24} />
+          <p className="text-xs">Loading your order history...</p>
+        </div>
       ) : error ? (
-        <p role="alert" className="mt-8 text-rose-600 font-medium bg-rose-50 border border-rose-200 p-4 rounded-xl text-xs">
+        <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs">
           {error}
-        </p>
+        </div>
       ) : orders.length ? (
-        <div className="mt-8 space-y-4">
+        <div className="space-y-4">
           {orders.map((order) => {
-            const items = Array.isArray(order.items)
-              ? order.items
-              : typeof order.items === "string"
-              ? JSON.parse(order.items || "[]")
-              : [];
+            let items = [];
+            if (Array.isArray(order.items)) {
+              items = order.items;
+            } else if (typeof order.items === "string") {
+              try {
+                items = JSON.parse(order.items);
+              } catch {
+                items = [];
+              }
+            }
+
+            const statusColors = {
+              Pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+              Processing: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+              Shipped: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+              Delivered: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+              Cancelled: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+            };
+            const badgeClass = statusColors[order.status] || "bg-slate-700/30 text-slate-300 border-slate-600/30";
 
             return (
-              <article key={order.id} className="rounded-2xl border border-slate-200 p-5 bg-white shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <article
+                key={order.id}
+                className="bg-[#131d33] border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition space-y-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-800">
                   <div>
-                    <p className="font-bold text-slate-900">Order #{order.id}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {order.created_at?.slice(0, 10) || "Recent"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">
-                        ${Number(order.total || 0).toFixed(2)}
-                      </p>
-                      <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white text-sm">
+                        Order #{order.id}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}`}>
                         {order.status || "Pending"}
                       </span>
                     </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Placed on {order.created_at ? order.created_at.slice(0, 10) : "Recent"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-bold text-white mr-1">
+                      ${Number(order.total || 0).toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => setSelectedTicketOrder(order)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/70 text-xs font-semibold transition cursor-pointer"
+                      title="View barcode ticket receipt"
+                    >
+                      <Ticket size={13} />
+                      <span>Ticket</span>
+                    </button>
                     <button
                       onClick={() =>
                         openInvoice(
@@ -101,49 +159,184 @@ export function OrdersPage() {
                           }
                         )
                       }
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold transition cursor-pointer"
+                      title="Download or print invoice"
                     >
-                      Download Invoice
+                      <FileText size={13} />
+                      <span>Invoice</span>
                     </button>
                   </div>
                 </div>
 
                 {items.length > 0 && (
-                  <ul className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600 space-y-1">
-                    {items.map((item, index) => (
-                      <li key={`${item.id || item.name}-${index}`} className="flex items-center justify-between">
-                        <span>
-                          {item.name || `Item #${index + 1}`} × {item.quantity || item.qty || 1}
-                        </span>
-                        <span className="font-medium text-slate-800">
-                          ${(Number(item.price || 0) * Number(item.quantity || item.qty || 1)).toFixed(2)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Items Ordered ({items.length})
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2.5 bg-[#0e1628] p-2.5 rounded-xl border border-slate-800/60 text-xs"
+                        >
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-8 h-8 rounded-lg object-cover bg-slate-900 border border-slate-800 shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-200 truncate text-[11px]">
+                              {item.name || `Item #${idx + 1}`}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              Qty: {item.quantity || item.qty || 1} × ${Number(item.price || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </article>
             );
           })}
         </div>
       ) : (
-        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
-          No orders to show yet. Your purchases will appear here.
+        <div className="py-16 text-center text-slate-400 bg-[#131d33] border border-dashed border-slate-800 rounded-3xl p-8">
+          <Package className="mx-auto text-slate-600 mb-3" size={36} />
+          <p className="font-bold text-white text-sm">No orders yet</p>
+          <p className="text-xs text-slate-400 mt-1">
+            When you purchase items from our catalog, your delivery status and scannable invoices will appear here.
+          </p>
         </div>
       )}
-    </>
+
+      {/* Modal for viewing Order Ticket with Barcode */}
+      {selectedTicketOrder && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md my-auto">
+            <button
+              onClick={() => setSelectedTicketOrder(null)}
+              className="absolute -top-3 -right-3 z-30 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-rose-600 border border-slate-700 flex items-center justify-center transition shadow-lg cursor-pointer"
+              aria-label="Close ticket modal"
+            >
+              <X size={16} />
+            </button>
+            <OrderSuccessTicket
+              order={selectedTicketOrder}
+              customer={
+                user || {
+                  name: selectedTicketOrder.customer_name,
+                  email: selectedTicketOrder.customer_email,
+                }
+              }
+              onContinueShopping={() => setSelectedTicketOrder(null)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 export function AddressesPage() {
   const { user } = useOutletContext();
-  const storageKey = `customerAddresses:${user.id || user.email}`;
-  const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem(storageKey) || "[]"));
+  const storageKey = `customerAddresses:${user?.id || user?.email || "guest"}`;
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [form, setForm] = useState({ name: "", address: "", city: "", postal: "" });
-  const save = (next) => { setAddresses(next); localStorage.setItem(storageKey, JSON.stringify(next)); };
-  const submit = (event) => { event.preventDefault(); save([...addresses, { ...form, id: Date.now() }]); setForm({ name: "", address: "", city: "", postal: "" }); };
 
-  return <><h1 className="text-2xl font-bold">Delivery addresses</h1><p className="text-slate-500 mt-1 mb-7">Manage saved delivery locations on this device</p><div className="grid sm:grid-cols-2 gap-3">{addresses.map(address => <div key={address.id} className="rounded-xl border p-4"><div className="flex justify-between font-semibold">{address.name}<button onClick={() => save(addresses.filter(item => item.id !== address.id))} aria-label="Remove address"><Trash2 size={16}/></button></div><p className="text-sm text-slate-600 mt-2">{address.address}<br/>{address.city} {address.postal}</p></div>)}</div><form onSubmit={submit} className="mt-7 grid sm:grid-cols-2 gap-3 max-w-2xl">{[["name","Label (Home, Work)"],["address","Street address"],["city","City"],["postal","Postal code"]].map(([key,label])=><input key={key} required placeholder={label} value={form[key]} onChange={event=>setForm({...form,[key]:event.target.value})} className="rounded-xl border px-4 py-3 text-sm"/>)}<button className="sm:col-span-2 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white py-3"><Plus size={16}/>Add address</button></form></>;
+  const save = (next) => {
+    setAddresses(next);
+    localStorage.setItem(storageKey, JSON.stringify(next));
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.address) return;
+    save([...addresses, { ...form, id: Date.now() }]);
+    setForm({ name: "", address: "", city: "", postal: "" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Delivery Addresses</h1>
+        <p className="text-xs text-slate-400 mt-1">Save preferred shipping locations for fast single-click checkout</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
+        {addresses.map((address) => (
+          <div key={address.id} className="bg-[#131d33] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="font-bold text-xs text-white">{address.name}</span>
+                <button
+                  onClick={() => save(addresses.filter((item) => item.id !== address.id))}
+                  className="text-slate-500 hover:text-rose-400 transition cursor-pointer p-1"
+                  aria-label="Remove address"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                {address.address}<br />
+                {address.city} {address.postal}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={submit} className="bg-[#131d33] border border-slate-800 rounded-2xl p-5 max-w-2xl space-y-3">
+        <h3 className="font-bold text-xs text-slate-300 uppercase tracking-wider mb-2">
+          Add New Delivery Location
+        </h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input
+            required
+            placeholder="Label (e.g. Home, Office)"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600"
+          />
+          <input
+            required
+            placeholder="Street address"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600"
+          />
+          <input
+            placeholder="City"
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600"
+          />
+          <input
+            placeholder="Postal code"
+            value={form.postal}
+            onChange={(e) => setForm({ ...form, postal: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600"
+          />
+        </div>
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-md shadow-blue-900/30"
+        >
+          <Plus size={15} />
+          <span>Save Address</span>
+        </button>
+      </form>
+    </div>
+  );
 }
 
 export function SupportPage() {
@@ -153,29 +346,125 @@ export function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
+  const [success, setSuccess] = useState("");
+
+  const authToken = token || localStorage.getItem("token") || localStorage.getItem("swiftshop_token");
+  const auth = { headers: { Authorization: `Bearer ${authToken}` } };
 
   useEffect(() => {
-    axios.get(`${API_URL}/user/support-tickets`, auth)
+    if (!authToken) {
+      setLoading(false);
+      return;
+    }
+    axios
+      .get(`${API_URL}/user/support-tickets`, auth)
       .then(({ data }) => setTickets(Array.isArray(data) ? data : []))
-      .catch(() => setError("Unable to load your support requests."))
+      .catch(() => setError("Unable to load support tickets."))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [authToken]);
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async (e) => {
+    e.preventDefault();
     setSaving(true);
     setError("");
+    setSuccess("");
     try {
       const { data } = await axios.post(`${API_URL}/user/support-tickets`, form, auth);
-      setTickets(current => [data.ticket, ...current]);
+      setTickets((curr) => [data.ticket, ...curr]);
       setForm({ subject: "", message: "" });
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || "Could not send your support request.");
+      setSuccess("Your support request has been submitted to customer service.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not submit your support request.");
     } finally {
       setSaving(false);
     }
   };
 
-  return <><h1 className="text-2xl font-bold">Contact support</h1><p className="text-slate-500 mt-1 mb-7">Send a request to our team and follow its status here.</p>{error && <p role="alert" className="mb-4 text-sm text-rose-600">{error}</p>}<form onSubmit={submit} className="max-w-xl space-y-4"><label className="block text-sm font-medium">Subject<input required maxLength="150" value={form.subject} onChange={event=>setForm({...form, subject:event.target.value})} className="mt-2 w-full rounded-xl border border-slate-200 p-3" /></label><label className="block text-sm font-medium">How can we help?<textarea required minLength="5" maxLength="5000" rows="5" value={form.message} onChange={event=>setForm({...form, message:event.target.value})} className="mt-2 w-full rounded-xl border border-slate-200 p-4"/></label><button disabled={saving} className="rounded-xl bg-indigo-600 px-5 py-3 text-white font-semibold disabled:opacity-60">{saving ? "Sending..." : "Send request"}</button></form><section className="mt-10"><h2 className="text-lg font-bold">Your support requests</h2>{loading ? <p className="mt-4 text-sm text-slate-500">Loading requests...</p> : tickets.length ? <div className="mt-4 space-y-3">{tickets.map(ticket => <article key={ticket.id} className="rounded-xl border border-slate-200 p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">{ticket.subject}</h3><span className="text-xs font-semibold text-indigo-700">{ticket.status}</span></div><p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{ticket.message}</p>{ticket.admin_response && <div className="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-slate-700"><strong>Support reply:</strong><p className="mt-1 whitespace-pre-wrap">{ticket.admin_response}</p></div>}<p className="mt-3 text-xs text-slate-400">{ticket.created_at?.slice(0, 10)}</p></article>)}</div> : <p className="mt-4 text-sm text-slate-500">You have no support requests yet.</p>}</section></>;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Contact Support</h1>
+        <p className="text-xs text-slate-400 mt-1">Submit inquiries regarding deliveries, refunds, or product details</p>
+      </div>
+
+      {success && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 size={15} />
+          <span>{success}</span>
+        </div>
+      )}
+      {error && (
+        <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl text-xs text-rose-300">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={submit} className="bg-[#131d33] border border-slate-800 rounded-2xl p-5 max-w-xl space-y-3 text-xs">
+        <div>
+          <label className="block text-slate-300 font-semibold mb-1">Subject</label>
+          <input
+            required
+            maxLength={150}
+            placeholder="e.g. Question about order tracking"
+            value={form.subject}
+            onChange={(e) => setForm({ ...form, subject: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-300 font-semibold mb-1">Message</label>
+          <textarea
+            required
+            minLength={5}
+            maxLength={5000}
+            rows={4}
+            placeholder="Describe your inquiry in detail..."
+            value={form.message}
+            onChange={(e) => setForm({ ...form, message: e.target.value })}
+            className="w-full bg-[#0e1628] border border-slate-800 rounded-xl p-3.5 text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-600 resize-none leading-relaxed"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold shadow-md shadow-blue-900/30 transition cursor-pointer disabled:opacity-50"
+        >
+          <Send size={14} />
+          <span>{saving ? "Sending..." : "Submit Ticket"}</span>
+        </button>
+      </form>
+
+      {/* Ticket List */}
+      <div className="pt-4 space-y-3">
+        <h3 className="font-bold text-sm text-white">Your Recent Support Requests</h3>
+        {loading ? (
+          <p className="text-xs text-slate-500">Loading requests...</p>
+        ) : tickets.length ? (
+          tickets.map((t) => (
+            <div key={t.id} className="bg-[#131d33] border border-slate-800 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-white text-xs">{t.subject}</span>
+                <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                  {t.status}
+                </span>
+              </div>
+              <p className="text-slate-300 whitespace-pre-wrap">{t.message}</p>
+              {t.admin_response && (
+                <div className="p-3 bg-[#0e1628] rounded-xl border border-blue-500/20 mt-2">
+                  <p className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">
+                    Staff Response:
+                  </p>
+                  <p className="text-slate-200 mt-1 whitespace-pre-wrap">{t.admin_response}</p>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-slate-500">No support inquiries opened yet.</p>
+        )}
+      </div>
+    </div>
+  );
 }

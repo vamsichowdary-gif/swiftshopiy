@@ -18,9 +18,9 @@ export default function AdminLogin({ onAuthSuccess }) {
     try {
       const { user, token } = await loginAdmin(identifier, password);
 
-      // Persist auth
-      if (token) localStorage.setItem("token", token);
-      if (user) localStorage.setItem("user", JSON.stringify(user));
+      // Persist admin auth in dedicated admin storage keys
+      if (token) localStorage.setItem("swiftshop_admin_token", token);
+      if (user) localStorage.setItem("swiftshop_admin_user", JSON.stringify(user));
 
       if (typeof onAuthSuccess === "function") {
         onAuthSuccess(user, token);
