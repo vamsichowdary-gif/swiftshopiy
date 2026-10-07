@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Mail\WelcomeMail;
+use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\AuthOtpController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,3 +22,15 @@ Route::get('/Products/{filename}', function ($filename) {
         'Access-Control-Allow-Methods' => 'GET, OPTIONS',
     ]);
 })->where('filename', '.*');
+
+// Safe test route (only sends when you visit http://127.0.0.1:8000/test-mail)
+Route::get('/test-mail', function () {
+    Mail::to('naiduvamsi489@gmail.com')->send(new WelcomeMail('Vamsi', 'naiduvamsi489@gmail.com'));
+    return response()->json(['message' => 'Test email sent successfully!']);
+});
+
+
+
+Route::post('/send-otp', [AuthOtpController::class, 'sendOtp']);
+Route::post('/register', [AuthOtpController::class, 'registerWithOtp']);
+Route::post('/login-otp', [AuthOtpController::class, 'verifyLoginOtp']);
