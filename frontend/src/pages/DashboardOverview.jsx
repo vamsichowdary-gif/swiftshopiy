@@ -20,9 +20,7 @@ import {
 import NewsTicker from "../components/NewsTicker";
 import OrderSuccessTicket from "../components/OrderSuccessTicket";
 import { openInvoice } from "../utils/invoice";
-
-const API_URL =
-  import.meta.env?.VITE_API_URL || "https://swiftshopiy-backned.onrender.com/api";
+import { API_URL } from "../config/api";
 
 export default function DashboardOverview() {
   const { user, token } = useOutletContext();

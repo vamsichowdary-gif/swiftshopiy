@@ -4,9 +4,7 @@ import { Plus, Trash2, FileText, Package, MapPin, Send, MessageSquare, CheckCirc
 import axios from "axios";
 import { openInvoice } from "../utils/invoice";
 import OrderSuccessTicket from "../components/OrderSuccessTicket";
-
-const API_URL =
-  import.meta.env?.VITE_API_URL || "https://swiftshopiy-backned.onrender.com/api";
+import { API_URL } from "../config/api";
 
 export function ProfilePage() {
   const { user } = useOutletContext();

@@ -5,17 +5,10 @@ import { CheckCircle2, ShieldCheck, ShoppingBag, FileText, ArrowRight } from "lu
 import { openInvoice } from "../utils/invoice";
 
 import OrderSuccessTicket from "../components/OrderSuccessTicket";
+import { API_URL } from "../config/api";
 
 export default function Checkout({ cart = [], onClearCart, user, token }) {
   const navigate = useNavigate();
-
-  const API_URL =
-    import.meta.env?.VITE_API_URL ||
-    (typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1")
-      ? "http://127.0.0.1:8000/api"
-      : "https://swiftshopiy-backned.onrender.com/api");
 
   const [formData, setFormData] = useState({
     name: user?.name || "",

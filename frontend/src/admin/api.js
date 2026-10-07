@@ -1,8 +1,8 @@
 import axios from "axios";
+import { API_URL } from "../config/api";
 
-// Base URL points to the backend API (Render backend or local override via VITE_API_URL)
-export const API_BASE_URL =
-  import.meta.env?.VITE_API_URL || "https://swiftshopiy-backned.onrender.com/api";
+// Base URL points to the backend API (Render live backend)
+export const API_BASE_URL = API_URL;
 
 export const getAuthConfig = (token) => ({
   headers: {

@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+
         // Prepend custom CORS middleware to ensure it runs first on all incoming requests
         $middleware->prepend(\App\Http\Middleware\Cors::class);
 

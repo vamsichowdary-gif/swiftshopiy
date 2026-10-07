@@ -12,7 +12,13 @@ class ProductController extends Controller
     // GET: List all products
     public function index()
     {
-        return response()->json(Product::orderBy('id', 'desc')->get());
+        $products = Product::orderBy('id', 'desc')->get()->map(function ($p) {
+            if ($p->image && str_starts_with($p->image, 'http://swiftshopiy-backned.onrender.com')) {
+                $p->image = str_replace('http://', 'https://', $p->image);
+            }
+            return $p;
+        });
+        return response()->json($products);
     }
 
     // POST: Create a product
@@ -90,6 +96,9 @@ class ProductController extends Controller
         $uploaded = [];
         $urls = [];
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        if (str_contains($baseUrl, 'onrender.com') || $request->header('x-forwarded-proto') === 'https') {
+            $baseUrl = str_replace('http://', 'https://', $baseUrl);
+        }
 
         foreach ($files as $file) {
             if (!$file->isValid()) {
