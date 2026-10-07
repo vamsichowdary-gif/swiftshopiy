@@ -18,7 +18,8 @@ class OtpVerificationMail extends Mailable
      * Create a new message instance.
      */
     public function __construct(
-        public string $otp
+        public string $otp,
+        public ?string $name = null
     ) {}
 
     /**

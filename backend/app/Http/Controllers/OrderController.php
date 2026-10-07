@@ -2,7 +2,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Mail\OrderStatusMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -40,10 +43,58 @@ class OrderController extends Controller
             'items'          => $validated['items'],
         ]);
 
+        // Send Order Placed Notification Email
+        if (!empty($order->customer_email)) {
+            try {
+                $items = is_array($order->items) ? $order->items : (method_exists($order->items, 'toArray') ? $order->items->toArray() : (array) $order->items);
+                Mail::to($order->customer_email)->send(new OrderStatusMail(
+                    customerName: $order->customer_name,
+                    orderId: (string) $order->id,
+                    status: 'Placed',
+                    items: $items,
+                    totalAmount: '₹' . number_format((float) $order->total, 2)
+                ));
+            } catch (\Throwable $e) {
+                Log::warning("Failed to send order placed email for order #{$order->id}: " . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'message' => 'Order placed successfully',
             'order'   => $order,
         ], 201);
+    }
+
+    // Cancel order
+    public function cancel(Request $request, Order $order)
+    {
+        $user = $request->user();
+        if ($order->user_id !== $user->id && strtolower($order->customer_email) !== strtolower($user->email)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if (in_array(strtolower($order->status), ['shipped', 'delivered', 'cancelled'])) {
+            return response()->json(['message' => "Order cannot be cancelled in {$order->status} status."], 422);
+        }
+
+        $order->update(['status' => 'Cancelled']);
+
+        if (!empty($order->customer_email)) {
+            try {
+                Mail::to($order->customer_email)->send(new OrderStatusMail(
+                    customerName: $order->customer_name,
+                    orderId: (string) $order->id,
+                    status: 'Cancelled'
+                ));
+            } catch (\Throwable $e) {
+                Log::warning("Failed to send order cancelled email for order #{$order->id}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Order cancelled successfully',
+            'order' => $order
+        ]);
     }
 
     // Fetch user-specific orders for UserDashboard

@@ -7,11 +7,15 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\FlashDealController;
+use App\Http\Controllers\AuthOtpController;
 use App\Http\Middleware\EnsureAdminUser;
 
 // Public Authentication
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/send-otp', [AuthOtpController::class, 'sendOtp']);
+Route::post('/register', [AuthOtpController::class, 'registerWithOtp']);
+Route::post('/register-password', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login-otp', [AuthOtpController::class, 'verifyLoginOtp']);
 
 // Public Product Catalog
 Route::get('/products', [ProductController::class, 'index']);
@@ -34,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
 
     Route::get('/user/orders', [OrderController::class, 'userOrders']);
+    Route::patch('/user/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::get('/user/support-tickets', [SupportController::class, 'index']);
     Route::post('/user/support-tickets', [SupportController::class, 'store']);
 
