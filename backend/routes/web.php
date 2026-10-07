@@ -59,3 +59,5 @@ Route::get('/test-order-mail/{status?}', function ($status = 'Placed') {
 Route::post('/send-otp', [AuthOtpController::class, 'sendOtp']);
 Route::post('/register', [AuthOtpController::class, 'registerWithOtp']);
 Route::post('/login-otp', [AuthOtpController::class, 'verifyLoginOtp']);
+Route::post('/send-mobile-otp', [AuthOtpController::class, 'sendMobileOtp']);
+Route::post('/login-mobile-otp', [AuthOtpController::class, 'verifyMobileOtp']);

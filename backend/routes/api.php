@@ -16,6 +16,8 @@ Route::post('/register', [AuthOtpController::class, 'registerWithOtp']);
 Route::post('/register-password', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login-otp', [AuthOtpController::class, 'verifyLoginOtp']);
+Route::post('/send-mobile-otp', [AuthOtpController::class, 'sendMobileOtp']);
+Route::post('/login-mobile-otp', [AuthOtpController::class, 'verifyMobileOtp']);
 
 // Public Product Catalog
 Route::get('/products', [ProductController::class, 'index']);

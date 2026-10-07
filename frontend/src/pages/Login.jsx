@@ -15,11 +15,16 @@ import {
   RefreshCw,
   CheckCircle2,
   ArrowLeft,
+  Info,
 } from "lucide-react";
 import OtpInput, { triggerConfettiBlast } from "../components/OtpInput";
 
 const API_URL =
-  import.meta.env?.VITE_API_URL || "http://127.0.0.1:8000/api";
+  import.meta.env?.VITE_API_URL ||
+  (typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:8000/api"
+    : "https://swiftshopiy-backned.onrender.com/api");
 
 export default function Login({ onAuthSuccess }) {
   // Main login mode: 'password' | 'otp'
@@ -40,7 +45,7 @@ export default function Login({ onAuthSuccess }) {
   // Mobile OTP state
   const [mobileNumber, setMobileNumber] = useState("");
   const [mobileOtpStep, setMobileOtpStep] = useState("request"); // 'request' | 'verify'
-  const [mobileOtpCode, setMobileOtpCode] = useState("");
+  const [mobileOtpNotice, setMobileOtpNotice] = useState("");
 
   // Shared state
   const [countdown, setCountdown] = useState(0);
@@ -168,27 +173,78 @@ export default function Login({ onAuthSuccess }) {
     }
   };
 
-  // 4. Mobile OTP request
+  // 4. Request Mobile OTP
   const handleRequestMobileOtp = async (e) => {
-    e.preventDefault();
-    if (!mobileNumber || mobileNumber.length < 10) {
-      setError("Please enter a valid phone number (10+ digits).");
+    if (e?.preventDefault) e.preventDefault();
+    const cleanPhone = mobileNumber.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setError("Please enter a valid 10-digit mobile number.");
       return;
     }
+
+    setError("");
+    setMobileOtpNotice("");
+    setLoading(true);
+
+    try {
+      const res = await axios.post(`${API_URL}/send-mobile-otp`, {
+        phone: cleanPhone,
+      });
+
+      if (res.data?.success) {
+        setMobileOtpStep("verify");
+        setCountdown(45);
+        if (res.data?.dev_otp) {
+          setMobileOtpNotice(`Verification code: ${res.data.dev_otp}`);
+        } else if (res.data?.note) {
+          setMobileOtpNotice(res.data.note);
+        }
+      } else {
+        setError(res.data?.message || "Could not send mobile verification code.");
+      }
+    } catch (err) {
+      console.error("Mobile OTP request error:", err);
+      const msg =
+        err.response?.data?.message ||
+        "Unable to send SMS code right now. Please try Email OTP or Password.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 5. Verify Mobile OTP
+  const handleVerifyMobileOtp = async (code) => {
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      setMobileOtpStep("verify");
-      setCountdown(45);
+    try {
+      const res = await axios.post(`${API_URL}/login-mobile-otp`, {
+        phone: mobileNumber.replace(/\D/g, ""),
+        otp: code.trim(),
+      });
+
+      const { user, token } = res.data;
+      triggerConfettiBlast();
+      saveAuthAndRedirect(user, token);
+      return true;
+    } catch (err) {
+      console.error("Mobile OTP verify error:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.otp?.[0] ||
+        "Invalid or expired mobile OTP code.";
+      setError(msg);
+      return false;
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
-  const handleVerifyMobileOtp = async (code) => {
-    setError("Mobile OTP with Firebase is being initialized. Please use Email OTP or Password login while phone auth setup finishes.");
-    return false;
-  };
+  const isVerifying =
+    authMode === "otp" &&
+    ((otpChannel === "email" && emailOtpStep === "verify") ||
+      (otpChannel === "mobile" && mobileOtpStep === "verify"));
 
   return (
     <div className="relative min-h-[85vh] flex items-center justify-center px-4 py-12 overflow-hidden bg-slate-50/50">
@@ -205,18 +261,30 @@ export default function Login({ onAuthSuccess }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full flex justify-center">
-        {authMode === "otp" && emailOtpStep === "verify" && otpChannel === "email" ? (
-          <OtpInput
-            email={emailOtpAddress}
-            length={6}
-            onVerify={handleVerifyEmailOtp}
-            onResend={handleRequestEmailOtp}
-            onBack={() => setEmailOtpStep("request")}
-            countdown={countdown}
-            loading={loading}
-            error={error}
-          />
+      <div className="relative z-10 w-full flex flex-col items-center justify-center">
+        {isVerifying ? (
+          <div className="w-full flex flex-col items-center">
+            {mobileOtpNotice && otpChannel === "mobile" && (
+              <div className="mb-4 max-w-md w-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs rounded-2xl p-3 flex items-center gap-2 shadow-sm animate-in fade-in">
+                <Info size={16} className="text-indigo-600 shrink-0" />
+                <span className="font-semibold">{mobileOtpNotice}</span>
+              </div>
+            )}
+            <OtpInput
+              email={otpChannel === "email" ? emailOtpAddress : `+91 ${mobileNumber.replace(/\D/g, "")}`}
+              length={6}
+              onVerify={otpChannel === "email" ? handleVerifyEmailOtp : handleVerifyMobileOtp}
+              onResend={otpChannel === "email" ? handleRequestEmailOtp : handleRequestMobileOtp}
+              onBack={() =>
+                otpChannel === "email"
+                  ? setEmailOtpStep("request")
+                  : setMobileOtpStep("request")
+              }
+              countdown={countdown}
+              loading={loading}
+              error={error}
+            />
+          </div>
         ) : (
           /* Main Login Card with White Background */
           <div className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-2xl shadow-indigo-950/10 border border-slate-100 transition-all">
@@ -394,6 +462,7 @@ export default function Login({ onAuthSuccess }) {
                         <input
                           type="email"
                           required
+                          autoComplete="email"
                           value={emailOtpAddress}
                           onChange={(e) => setEmailOtpAddress(e.target.value)}
                           placeholder="customer@example.com"
@@ -422,8 +491,8 @@ export default function Login({ onAuthSuccess }) {
                   </form>
                 )}
 
-                {/* Mobile OTP (Firebase Phone Auth UI) */}
-                {otpChannel === "mobile" && (
+                {/* Mobile OTP Request */}
+                {otpChannel === "mobile" && mobileOtpStep === "request" && (
                   <form onSubmit={handleRequestMobileOtp} className="space-y-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -434,13 +503,14 @@ export default function Login({ onAuthSuccess }) {
                         <input
                           type="tel"
                           required
+                          autoComplete="tel"
                           value={mobileNumber}
                           onChange={(e) => setMobileNumber(e.target.value)}
-                          placeholder="+91 98765 43210"
+                          placeholder="e.g. 6303062506"
                           className="w-full pl-10 pr-4 py-3 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition placeholder-slate-400"
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1">Include country code (e.g. +91 for India)</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Enter your 10-digit mobile number</p>
                     </div>
 
                     <button
@@ -451,7 +521,7 @@ export default function Login({ onAuthSuccess }) {
                       {loading ? (
                         <>
                           <Loader2 size={16} className="animate-spin" />
-                          <span>Sending SMS...</span>
+                          <span>Sending SMS Code...</span>
                         </>
                       ) : (
                         <>

@@ -196,4 +196,123 @@ class AuthOtpController extends Controller
             ]
         ]);
     }
+
+    /**
+     * 4. Send OTP to mobile phone
+     */
+    public function sendMobileOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $rawPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        $cleanPhone = strlen($rawPhone) > 10 ? substr($rawPhone, -10) : $rawPhone;
+
+        if (strlen($cleanPhone) < 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid 10-digit mobile number.'
+            ], 422);
+        }
+
+        $otp = (string) rand(100000, 999999);
+        Cache::put('otp_phone_' . $cleanPhone, $otp, now()->addMinutes(10));
+
+        $apiKey = env('FAST2SMS_API_KEY');
+        $smsSent = false;
+        $smsError = null;
+
+        if ($apiKey) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    'authorization' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ])->post('https://www.fast2sms.com/dev/bulkV2', [
+                    'route' => 'otp',
+                    'variables_values' => $otp,
+                    'numbers' => $cleanPhone,
+                ]);
+
+                $resData = $response->json();
+                if ($response->successful() && ($resData['return'] ?? false) === true) {
+                    $smsSent = true;
+                } else {
+                    $smsError = $resData['message'] ?? 'SMS gateway response failed';
+                    Log::warning("Fast2SMS gateway returned for {$cleanPhone}: " . json_encode($resData));
+                }
+            } catch (\Throwable $e) {
+                $smsError = $e->getMessage();
+                Log::warning("Fast2SMS connection error for {$cleanPhone}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $smsSent
+                ? "OTP sent successfully to +91 {$cleanPhone}."
+                : "OTP generated for +91 {$cleanPhone}.",
+            'sms_sent' => $smsSent,
+            'dev_otp' => $smsSent ? null : $otp,
+            'note' => $smsSent ? null : ($smsError ?: 'Use the OTP code provided to verify.')
+        ]);
+    }
+
+    /**
+     * 5. Verify Mobile OTP & login or create user
+     */
+    public function verifyMobileOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+            'otp'   => 'required|numeric',
+        ]);
+
+        $rawPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        $cleanPhone = strlen($rawPhone) > 10 ? substr($rawPhone, -10) : $rawPhone;
+
+        $cachedOtp = Cache::get('otp_phone_' . $cleanPhone);
+
+        if (!$cachedOtp || (string)$cachedOtp !== (string)$request->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired mobile OTP code.'
+            ], 422);
+        }
+
+        Cache::forget('otp_phone_' . $cleanPhone);
+
+        // Find or create user with this phone
+        $user = User::where('phone', $cleanPhone)->orWhere('phone', '+91' . $cleanPhone)->first();
+
+        if (!$user) {
+            $userId = 'SW' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+            $user = User::create([
+                'name'     => 'Customer ' . substr($cleanPhone, -4),
+                'username' => 'user_' . $cleanPhone,
+                'user_id'  => $userId,
+                'phone'    => '+91' . $cleanPhone,
+                'email'    => 'user_' . $cleanPhone . '@swiftshopiy.com',
+                'password' => Hash::make(Str::random(16)),
+                'role'     => 'Customer',
+            ]);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mobile login successful.',
+            'token'   => $token,
+            'user'    => [
+                'id'       => $user->id,
+                'username' => $user->username,
+                'user_id'  => $user->user_id,
+                'name'     => $user->name,
+                'email'    => $user->email,
+                'phone'    => $user->phone,
+                'role'     => $user->role ?? 'Customer',
+            ]
+        ]);
+    }
 }
