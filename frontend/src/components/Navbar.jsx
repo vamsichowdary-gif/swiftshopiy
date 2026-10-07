@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, ShoppingBag, UserRound, X, LogOut } from "lucide-react";
+import { Menu, ShoppingBag, UserRound, X, LogOut, Heart } from "lucide-react";
 
 const links = [["/", "Home"], ["/shop", "Shop"], ["/services", "Services"], ["/about", "About"], ["/contact", "Contact"]];
 const navLinkClass = ({ isActive }) => `relative py-2 text-[11px] font-semibold transition after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:origin-left after:bg-[#354638] after:transition-transform ${isActive ? "text-[#27352b] after:scale-x-100" : "text-slate-500 after:scale-x-0 hover:text-slate-950 hover:after:scale-x-100"}`;
 
-export default function Navbar({ user, onLogout, cartCount, onOpenCart }) {
+export default function Navbar({ user, onLogout, cartCount, onOpenCart, wishlistCount = 0 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -28,13 +28,50 @@ export default function Navbar({ user, onLogout, cartCount, onOpenCart }) {
             <button onClick={onLogout} title="Sign out" aria-label="Sign out" className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-rose-600"><LogOut size={15}/></button>
           </div> : <Link to="/login" className="rounded-full bg-[#26352b] px-4 py-2.5 text-[11px] font-bold text-white transition hover:bg-[#3b4b3f] sm:px-5">Sign in</Link>}
           {user?.user_id && <span className="hidden text-[10px] text-slate-400 xl:inline">{user.user_id}</span>}
+
+          {/* Wishlist Link & Badge */}
+          <Link
+            to="/wishlist"
+            aria-label={`Wishlist, ${wishlistCount} items`}
+            className="relative grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-slate-800 transition hover:bg-white hover:text-rose-600"
+          >
+            <Heart size={17} className={wishlistCount > 0 ? "fill-rose-500 text-rose-500" : ""} />
+            {wishlistCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
+
           <button onClick={onOpenCart} aria-label={`Open shopping bag, ${cartCount} items`} className="relative grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-slate-800 transition hover:bg-white">
             <ShoppingBag size={17}/>{cartCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#748174] px-1 text-[9px] font-bold text-white">{cartCount}</span>}
           </button>
           <button className="grid h-10 w-10 place-items-center rounded-full text-slate-800 md:hidden" onClick={() => setMobileOpen(open => !open)} aria-label={mobileOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileOpen}>{mobileOpen ? <X size={19}/> : <Menu size={19}/>}</button>
         </div>
       </div>
-      {mobileOpen && <nav className="border-t border-slate-200 bg-[#faf9f6] px-5 py-3 md:hidden">{links.map(([to, label]) => <NavLink key={to} to={to} end={to === "/"} onClick={() => setMobileOpen(false)} className={({ isActive }) => `block border-b border-slate-200/70 py-3.5 text-sm font-semibold ${isActive ? "text-[#354638]" : "text-slate-600"}`}>{label}</NavLink>)}</nav>}
+      {mobileOpen && (
+        <nav className="border-t border-slate-200 bg-[#faf9f6] px-5 py-3 md:hidden">
+          {links.map(([to, label]) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/"}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `block border-b border-slate-200/70 py-3.5 text-sm font-semibold ${isActive ? "text-[#354638]" : "text-slate-600"}`}
+            >
+              {label}
+            </NavLink>
+          ))}
+          <NavLink
+            to="/wishlist"
+            onClick={() => setMobileOpen(false)}
+            className={({ isActive }) => `flex items-center justify-between border-b border-slate-200/70 py-3.5 text-sm font-semibold ${isActive ? "text-rose-600" : "text-slate-600"}`}
+          >
+            <span>Wishlist</span>
+            {wishlistCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs text-white">{wishlistCount}</span>}
+          </NavLink>
+        </nav>
+      )}
     </header>
   );
 }

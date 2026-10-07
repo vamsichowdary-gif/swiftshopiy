@@ -12,10 +12,11 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'customer_name' => 'required|string|max:255',
+            'customer_name'  => 'required|string|max:255',
             'customer_email' => 'required|email|max:255',
-            'total' => 'required|numeric|min:0',
-            'items' => 'required|array|min:1',
+            'customer_phone' => 'nullable|string|max:30',
+            'total'          => 'required|numeric|min:0',
+            'items'          => 'required|array|min:1',
         ]);
 
         $userId = null;
@@ -34,16 +35,31 @@ class OrderController extends Controller
             }
         }
 
-        $order = Order::create([
+        $phone = $validated['customer_phone'] ?? $request->input('phone');
+        if (!$phone && $userId) {
+            $phone = \App\Models\User::find($userId)?->phone;
+        }
+
+        $orderData = [
             'user_id'        => $userId,
             'customer_name'  => $validated['customer_name'],
             'customer_email' => $validated['customer_email'],
             'total'          => $validated['total'],
             'status'         => 'Pending',
             'items'          => $validated['items'],
-        ]);
+        ];
 
-        // Send Order Placed Notification Email
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'customer_phone')) {
+                $orderData['customer_phone'] = $phone;
+            }
+        } catch (\Throwable $ignored) {
+            // In case schema query fails on certain configurations
+        }
+
+        $order = Order::create($orderData);
+
+        // 1. Send Order Placed Email Notification
         if (!empty($order->customer_email)) {
             try {
                 $items = is_array($order->items) ? $order->items : (method_exists($order->items, 'toArray') ? $order->items->toArray() : (array) $order->items);
@@ -54,8 +70,33 @@ class OrderController extends Controller
                     items: $items,
                     totalAmount: '₹' . number_format((float) $order->total, 2)
                 ));
+                Log::info("Order placed email sent successfully to: " . $order->customer_email);
             } catch (\Throwable $e) {
                 Log::warning("Failed to send order placed email for order #{$order->id}: " . $e->getMessage());
+            }
+        }
+
+        // 2. Send SMS confirmation if customer phone is provided
+        if ($phone) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            $cleanPhone = strlen($cleanPhone) > 10 ? substr($cleanPhone, -10) : $cleanPhone;
+            $apiKey = env('FAST2SMS_API_KEY', '7BKqtAgELpkvuhYMa4TOF0sbX1Z56wVUCdnGNmJxrPDfHzQeS3oazIMBn3JAmEs9udNfc2TZeK8FbhkC');
+            if ($apiKey && strlen($cleanPhone) === 10) {
+                try {
+                    $smsRes = \Illuminate\Support\Facades\Http::withHeaders([
+                        'authorization' => $apiKey,
+                        'Content-Type' => 'application/json',
+                    ])->post('https://www.fast2sms.com/dev/bulkV2', [
+                        'route' => 'q',
+                        'message' => "SwiftShopiy: Order #{$order->id} placed successfully! Total: Rs. {$order->total}. Track at https://swiftshopiy.vercel.app",
+                        'language' => 'english',
+                        'flash' => 0,
+                        'numbers' => $cleanPhone,
+                    ]);
+                    Log::info("Fast2SMS order notification response for order #{$order->id}: " . $smsRes->body());
+                } catch (\Throwable $e) {
+                    Log::warning("Failed to send order SMS for order #{$order->id}: " . $e->getMessage());
+                }
             }
         }
 

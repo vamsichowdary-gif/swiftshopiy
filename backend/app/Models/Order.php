@@ -13,6 +13,7 @@ class Order extends Model
         'user_id',
         'customer_name',
         'customer_email',
+        'customer_phone',
         'total',
         'status',
         'items',

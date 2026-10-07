@@ -3,7 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import { PackageX, Search, SlidersHorizontal } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 
-export default function Shop({ products = [], loading = false, onAddToCart }) {
+export default function Shop({
+  products = [],
+  loading = false,
+  onAddToCart,
+  wishlist = [],
+  onToggleWishlist,
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
@@ -55,7 +61,7 @@ export default function Shop({ products = [], loading = false, onAddToCart }) {
 
         <div className="mb-5 flex items-center justify-between text-xs text-slate-500"><span>{loading ? "Finding your collection..." : `${filteredProducts.length} ${filteredProducts.length === 1 ? "piece" : "pieces"}`}</span>{selectedCategory !== "All" && <button onClick={() => selectCategory("All")} className="font-semibold text-slate-700 underline underline-offset-4">Clear collection</button>}</div>
 
-        {loading ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <div key={index}><div className="aspect-[4/4.5] animate-pulse rounded-2xl bg-[#eeece7]"/><div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-[#eeece7]"/><div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#eeece7]"/></div>)}</div> : filteredProducts.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4 lg:gap-y-10">{filteredProducts.map(product => <ProductCard key={product.id} product={product} onAddToCart={onAddToCart}/>)}</div> : <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 text-center"><PackageX className="text-slate-300" size={34}/><h2 className="mt-4 font-serif text-2xl">Nothing here just yet</h2><p className="mt-2 max-w-sm text-sm text-slate-500">Try another search or collection to find what you’re looking for.</p><button onClick={() => { setSearchQuery(""); selectCategory("All"); }} className="mt-5 rounded-full bg-[#202a24] px-5 py-2.5 text-xs font-bold text-white">Show everything</button></div>}
+        {loading ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <div key={index}><div className="aspect-[4/4.5] animate-pulse rounded-2xl bg-[#eeece7]"/><div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-[#eeece7]"/><div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#eeece7]"/></div>)}</div> : filteredProducts.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4 lg:gap-y-10">{filteredProducts.map(product => <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} isWishlisted={wishlist.some(item => item.id === product.id)} onToggleWishlist={onToggleWishlist}/>)}</div> : <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 text-center"><PackageX className="text-slate-300" size={34}/><h2 className="mt-4 font-serif text-2xl">Nothing here just yet</h2><p className="mt-2 max-w-sm text-sm text-slate-500">Try another search or collection to find what you’re looking for.</p><button onClick={() => { setSearchQuery(""); selectCategory("All"); }} className="mt-5 rounded-full bg-[#202a24] px-5 py-2.5 text-xs font-bold text-white">Show everything</button></div>}
       </div>
     </main>
   );

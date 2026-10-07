@@ -19,6 +19,7 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Checkout from "./pages/Checkout";
+import Wishlist from "./pages/Wishlist";
 import UserDashboard from "./pages/UserDashboard";
 import {
   ProfilePage,
@@ -44,6 +45,7 @@ function StoreLayout({
   cart,
   onUpdateQty,
   onRemoveItem,
+  wishlistCount = 0,
 }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -53,6 +55,7 @@ function StoreLayout({
         onLogout={onLogout}
         cartCount={cartCount}
         onOpenCart={onOpenCart}
+        wishlistCount={wishlistCount}
       />
 
       <CartDrawer
@@ -107,10 +110,39 @@ export default function App() {
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Initialize wishlist from localStorage
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem("swiftshop_wishlist");
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Save cart changes to localStorage
   useEffect(() => {
     localStorage.setItem("swiftshop_cart", JSON.stringify(cart));
   }, [cart]);
+
+  // Save wishlist changes to localStorage
+  useEffect(() => {
+    localStorage.setItem("swiftshop_wishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  const toggleWishlist = (product) => {
+    setWishlist((prev) => {
+      const exists = prev.some((item) => item.id === product.id);
+      if (exists) {
+        return prev.filter((item) => item.id !== product.id);
+      }
+      return [...prev, product];
+    });
+  };
+
+  const removeFromWishlist = (productId) => {
+    setWishlist((prev) => prev.filter((item) => item.id !== productId));
+  };
 
   // Synchronize Products
   const fetchProducts = async () => {
@@ -226,6 +258,7 @@ export default function App() {
               user={user}
               onLogout={handleUserLogout}
               cartCount={totalCartCount}
+              wishlistCount={wishlist.length}
               onOpenCart={() => setIsCartOpen(true)}
               isCartOpen={isCartOpen}
               onCloseCart={() => setIsCartOpen(false)}
@@ -237,7 +270,14 @@ export default function App() {
         >
           <Route
             path="/"
-            element={<Home products={products} onAddToCart={addToCart} />}
+            element={
+              <Home
+                products={products}
+                onAddToCart={addToCart}
+                wishlist={wishlist}
+                onToggleWishlist={toggleWishlist}
+              />
+            }
           />
           <Route
             path="/shop"
@@ -246,6 +286,19 @@ export default function App() {
                 products={products}
                 loading={loading}
                 onAddToCart={addToCart}
+                wishlist={wishlist}
+                onToggleWishlist={toggleWishlist}
+              />
+            }
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <Wishlist
+                wishlist={wishlist}
+                onAddToCart={addToCart}
+                onRemoveFromWishlist={removeFromWishlist}
+                onClearWishlist={() => setWishlist([])}
               />
             }
           />

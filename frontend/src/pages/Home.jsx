@@ -7,7 +7,12 @@ import FlashDealsSection from "../components/FlashDealsSection";
 const fallbackCategories = ["Electronics", "Accessories", "Home"];
 const fallbackHeroImage = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1400&q=85";
 
-export default function Home({ products = [], onAddToCart }) {
+export default function Home({
+  products = [],
+  onAddToCart,
+  wishlist = [],
+  onToggleWishlist,
+}) {
   const collections = useMemo(() => {
     const names = [...new Set(products.map((product) => product.category).filter(Boolean))];
     return (names.length ? names : fallbackCategories).map((name) => ({
@@ -95,7 +100,7 @@ export default function Home({ products = [], onAddToCart }) {
             <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#748174]">Customer favorites</p><h2 className="mt-2 font-serif text-3xl tracking-tight sm:text-4xl">The everyday edit</h2></div>
             <Link to="/shop" className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-950">Shop all <ArrowRight size={14}/></Link>
           </div>
-          {featured.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-4">{featured.map(product => <ProductCard key={product.id} product={product} onAddToCart={onAddToCart}/>)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500">Our collection is loading. Check back in a moment.</div>}
+          {featured.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-4">{featured.map(product => <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} isWishlisted={wishlist.some(item => item.id === product.id)} onToggleWishlist={onToggleWishlist}/>)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500">Our collection is loading. Check back in a moment.</div>}
         </section>
 
         <section className="mt-16 overflow-hidden rounded-[26px] bg-[#dfe4dc] sm:mt-24">

@@ -1,7 +1,12 @@
 import React from "react";
-import { ArrowUpRight, ShoppingBag, Star } from "lucide-react";
+import { ArrowUpRight, Heart, ShoppingBag, Star } from "lucide-react";
 
-export default function ProductCard({ product, onAddToCart }) {
+export default function ProductCard({
+  product,
+  onAddToCart,
+  isWishlisted = false,
+  onToggleWishlist,
+}) {
   const price = Number(product.price || 0).toFixed(2);
   const rating = Number(product.rating);
 
@@ -18,6 +23,28 @@ export default function ProductCard({ product, onAddToCart }) {
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-700 backdrop-blur">
           {product.category || "Selected"}
         </span>
+
+        {/* Wishlist Heart Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleWishlist?.(product);
+          }}
+          className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full backdrop-blur transition shadow-sm ${
+            isWishlisted
+              ? "bg-rose-50 text-rose-500 hover:bg-rose-100"
+              : "bg-white/90 text-slate-500 hover:text-rose-500 hover:bg-white"
+          }`}
+          aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+        >
+          <Heart
+            size={16}
+            className={`transition ${isWishlisted ? "fill-rose-500 text-rose-500 scale-110" : ""}`}
+          />
+        </button>
+
         <button
           type="button"
           onClick={() => onAddToCart?.(product)}

@@ -9,9 +9,18 @@ import OrderSuccessTicket from "../components/OrderSuccessTicket";
 export default function Checkout({ cart = [], onClearCart, user, token }) {
   const navigate = useNavigate();
 
+  const API_URL =
+    import.meta.env?.VITE_API_URL ||
+    (typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1")
+      ? "http://127.0.0.1:8000/api"
+      : "https://swiftshopiy-backned.onrender.com/api");
+
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
+    phone: user?.phone || "",
     address: "",
     city: "",
     postalCode: "",
@@ -43,6 +52,7 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
       const payload = {
         customer_name: formData.name,
         customer_email: formData.email,
+        customer_phone: formData.phone || undefined,
         total: parseFloat(total.toFixed(2)),
         items: cart.map((item) => ({
           id: item.id,
@@ -61,7 +71,7 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
         },
       };
 
-      const res = await axios.post("https://swiftshopiy-backned.onrender.com/api/checkout", payload, config);
+      const res = await axios.post(`${API_URL}/checkout`, payload, config);
       const createdOrder = res.data?.order || {
         ...payload,
         id: res.data?.id || Date.now(),
@@ -152,6 +162,19 @@ export default function Checkout({ cart = [], onClearCart, user, token }) {
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Phone Number (for SMS confirmation & dispatch updates)
+              </label>
+              <input
+                type="tel"
+                placeholder="10-digit mobile number, e.g. 9876543210"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
 
             <div>

@@ -34,6 +34,19 @@ Route::post('/products/bulk-import-public', [ProductController::class, 'bulkImpo
 // Public Checkout (resolves user if auth token present or email matches)
 Route::post('/checkout', [OrderController::class, 'store']);
 
+// Database migration runner (safe & idempotent)
+Route::get('/run-migrations', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        return response()->json([
+            'success' => true,
+            'output' => \Illuminate\Support\Facades\Artisan::output()
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
