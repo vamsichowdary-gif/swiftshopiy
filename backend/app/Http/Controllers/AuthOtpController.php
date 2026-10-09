@@ -337,12 +337,66 @@ class AuthOtpController extends Controller
         // 3. Store in cache
         Cache::put('otp_phone_' . $cleanPhone, $otp, $expiresAt);
 
-        // 4. Send via Fast2SMS with route 'q' (Quick SMS without DLT registration)
-        $apiKey = env('FAST2SMS_API_KEY');
+        // 4. Try sending via Cloud SMS / Messaging Providers
         $smsSent = false;
         $smsError = null;
 
-        if ($apiKey) {
+        // Provider A: Twilio SMS (free trial credits available)
+        $twilioSid = env('TWILIO_SID');
+        $twilioToken = env('TWILIO_AUTH_TOKEN');
+        $twilioFrom = env('TWILIO_FROM');
+        if ($twilioSid && $twilioToken && $twilioFrom) {
+            try {
+                $twRes = Http::withBasicAuth($twilioSid, $twilioToken)
+                    ->asForm()
+                    ->post("https://api.twilio.com/2010-04-01/Accounts/{$twilioSid}/Messages.json", [
+                        'To'   => '+91' . $cleanPhone,
+                        'From' => $twilioFrom,
+                        'Body' => "SwiftShopiy: Your verification code is {$otp}. Valid for 10 minutes.",
+                    ]);
+                if ($twRes->successful()) {
+                    $smsSent = true;
+                    Log::info("OTP sent via Twilio SMS to +91{$cleanPhone}");
+                } else {
+                    $smsError = $twRes->json()['message'] ?? 'Twilio SMS failed';
+                    Log::warning("Twilio SMS response: " . $twRes->body());
+                }
+            } catch (\Throwable $e) {
+                $smsError = $e->getMessage();
+                Log::warning("Twilio connection error: " . $e->getMessage());
+            }
+        }
+
+        // Provider B: Meta WhatsApp Cloud API (1,000 free messages/month directly to +91 numbers)
+        $waToken = env('WHATSAPP_TOKEN');
+        $waPhoneId = env('WHATSAPP_PHONE_ID');
+        if (!$smsSent && $waToken && $waPhoneId && !str_contains($waToken, 'your_meta')) {
+            try {
+                $waRes = Http::withToken($waToken)
+                    ->post("https://graph.facebook.com/v19.0/{$waPhoneId}/messages", [
+                        'messaging_product' => 'whatsapp',
+                        'to'                => '91' . $cleanPhone,
+                        'type'              => 'text',
+                        'text'              => [
+                            'body' => "Your SwiftShopiy verification OTP is: *{$otp}* (valid for 10 minutes).",
+                        ],
+                    ]);
+                if ($waRes->successful()) {
+                    $smsSent = true;
+                    Log::info("OTP sent via WhatsApp Cloud API to 91{$cleanPhone}");
+                } else {
+                    $smsError = $waRes->json()['error']['message'] ?? 'WhatsApp dispatch failed';
+                    Log::warning("WhatsApp API response: " . $waRes->body());
+                }
+            } catch (\Throwable $e) {
+                $smsError = $e->getMessage();
+                Log::warning("WhatsApp connection error: " . $e->getMessage());
+            }
+        }
+
+        // Provider C: Fast2SMS route 'q' (Quick SMS)
+        $apiKey = env('FAST2SMS_API_KEY');
+        if (!$smsSent && $apiKey) {
             try {
                 $response = Http::withHeaders([
                     'authorization' => $apiKey,
