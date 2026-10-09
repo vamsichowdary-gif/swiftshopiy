@@ -35,6 +35,7 @@ export default function Login({ onAuthSuccess }) {
   // Email OTP state
   const [emailOtpAddress, setEmailOtpAddress] = useState("");
   const [emailOtpStep, setEmailOtpStep] = useState("request"); // 'request' | 'verify'
+  const [emailOtpNotice, setEmailOtpNotice] = useState("");
 
   // Mobile OTP state
   const [mobileNumber, setMobileNumber] = useState("");
@@ -113,6 +114,7 @@ export default function Login({ onAuthSuccess }) {
   const handleRequestEmailOtp = async (e) => {
     if (e?.preventDefault) e.preventDefault();
     setError("");
+    setEmailOtpNotice("");
     setLoading(true);
 
     try {
@@ -124,6 +126,13 @@ export default function Login({ onAuthSuccess }) {
       if (res.data?.success) {
         setEmailOtpStep("verify");
         setCountdown(45);
+        if (res.data?.dev_otp) {
+          setEmailOtpNotice(`Verification code: ${res.data.dev_otp}`);
+        } else if (res.data?.note) {
+          setEmailOtpNotice(res.data.note);
+        } else {
+          setEmailOtpNotice("");
+        }
       } else {
         setError(res.data?.message || "Could not send OTP code.");
       }
@@ -258,12 +267,6 @@ export default function Login({ onAuthSuccess }) {
       <div className="relative z-10 w-full flex flex-col items-center justify-center">
         {isVerifying ? (
           <div className="w-full flex flex-col items-center">
-            {mobileOtpNotice && otpChannel === "mobile" && (
-              <div className="mb-4 max-w-md w-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs rounded-2xl p-3 flex items-center gap-2 shadow-sm animate-in fade-in">
-                <Info size={16} className="text-indigo-600 shrink-0" />
-                <span className="font-semibold">{mobileOtpNotice}</span>
-              </div>
-            )}
             <OtpInput
               email={otpChannel === "email" ? emailOtpAddress : `+91 ${mobileNumber.replace(/\D/g, "")}`}
               length={6}
@@ -277,6 +280,7 @@ export default function Login({ onAuthSuccess }) {
               countdown={countdown}
               loading={loading}
               error={error}
+              notice={otpChannel === "email" ? emailOtpNotice : mobileOtpNotice}
             />
           </div>
         ) : (

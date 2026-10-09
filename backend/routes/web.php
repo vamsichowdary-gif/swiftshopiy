@@ -26,7 +26,7 @@ Route::get('/Products/{filename}', function ($filename) {
 
 // Safe test route (only sends when you visit http://127.0.0.1:8000/test-mail)
 Route::get('/test-mail', function () {
-    Mail::to('vckvms@gmail.com')->send(new WelcomeMail('Vamsi', 'naiduvamsi489@gmail.com'));
+    Mail::to('divyadharshana3@gmail.com')->send(new WelcomeMail('Vamsi', 'naiduvamsi489@gmail.com'));
     return response()->json(['message' => 'Test email sent successfully!']);
 });
 

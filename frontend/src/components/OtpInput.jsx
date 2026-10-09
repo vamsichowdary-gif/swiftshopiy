@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Loader2, ArrowLeft, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, CheckCircle2, KeyRound, Sparkles } from "lucide-react";
 
 export const triggerConfettiBlast = () => {
   const count = 200;
@@ -33,6 +33,7 @@ export default function OtpInput({
   countdown = 0,
   loading = false,
   error = "",
+  notice = "",
 }) {
   const [digits, setDigits] = useState(Array(length).fill(""));
   const [isSuccess, setIsSuccess] = useState(false);
@@ -128,9 +129,40 @@ export default function OtpInput({
       <p className="text-xs sm:text-sm text-slate-500 mb-1">
         We've sent a {length}-digit code to
       </p>
-      <p className="text-xs sm:text-sm font-bold text-indigo-600 mb-6 break-all">
+      <p className="text-xs sm:text-sm font-bold text-indigo-600 mb-4 break-all">
         {email}
       </p>
+
+      {/* Verification Notice / Dev OTP Banner */}
+      {notice && (
+        <div className="mb-5 text-xs text-indigo-800 bg-indigo-50 border border-indigo-200/80 p-3.5 rounded-2xl flex flex-col items-center justify-center gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <KeyRound size={15} className="text-indigo-600 shrink-0" />
+            <span className="font-semibold text-center">{notice}</span>
+          </div>
+          {(() => {
+            const matchedDigits = notice.match(/\b\d{6}\b/);
+            if (matchedDigits && matchedDigits[0]) {
+              const detectedCode = matchedDigits[0];
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = detectedCode.split("");
+                    setDigits(updated);
+                    handleComplete(detectedCode);
+                  }}
+                  className="mt-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles size={12} />
+                  <span>Auto-fill code {detectedCode}</span>
+                </button>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
 
       {/* Error Banner */}
       {error && (

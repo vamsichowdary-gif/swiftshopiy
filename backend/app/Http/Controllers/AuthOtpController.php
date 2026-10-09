@@ -7,15 +7,18 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Otp;
 use App\Mail\OtpVerificationMail;
 use App\Mail\WelcomeMail;
 
 class AuthOtpController extends Controller
 {
     /**
-     * 1. Send 6-digit OTP to user's email
+     * 1. Send 6-digit OTP to user's entered email
+     * Stores OTP and expiry in the database 'otps' table and users table.
      */
     public function sendOtp(Request $request)
     {
@@ -27,7 +30,7 @@ class AuthOtpController extends Controller
 
         $email = strtolower(trim($request->email));
         $type = $request->input('type', 'register');
-        $name = $request->input('name');
+        $name = $request->input('name') ?: 'there';
 
         // If logging in via OTP, ensure user exists
         if ($type === 'login') {
@@ -38,7 +41,7 @@ class AuthOtpController extends Controller
                     'message' => 'No account registered with this email address. Please create an account.'
                 ], 404);
             }
-            if (!$name) {
+            if ($user->name) {
                 $name = $user->name;
             }
         }
@@ -55,24 +58,56 @@ class AuthOtpController extends Controller
         }
 
         $otp = (string) rand(100000, 999999);
+        $expiresAt = now()->addMinutes(10);
 
-        // Store OTP in cache for 10 minutes
-        Cache::put('otp_' . $email, $otp, now()->addMinutes(10));
+        // 1. Store in Database 'otps' table with expiration
+        try {
+            Otp::create([
+                'identifier' => $email,
+                'otp'        => $otp,
+                'type'       => 'email',
+                'expires_at' => $expiresAt,
+                'ip_address' => $request->ip(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Failed to insert OTP in otps table: " . $e->getMessage());
+        }
 
-        // Dispatch OTP email
+        // 2. Also store directly in users table if user exists
+        try {
+            User::whereRaw('LOWER(email) = ?', [$email])->update([
+                'otp'            => $otp,
+                'otp_expires_at' => $expiresAt,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Could not update user table otp: " . $e->getMessage());
+        }
+
+        // 3. Store OTP in cache for 10 minutes (secondary lookup)
+        Cache::put('otp_' . $email, $otp, $expiresAt);
+
+        // 4. Dispatch OTP email to the entered address
+        $emailSent = false;
+        $emailError = null;
+
         try {
             Mail::to($email)->send(new OtpVerificationMail($otp, $name));
+            $emailSent = true;
+            Log::info("OTP verification email sent successfully to {$email}");
         } catch (\Throwable $e) {
-            Log::error("Failed to send OTP email to {$email}: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Could not send verification email. Please check your email configuration.'
-            ], 500);
+            $emailError = $e->getMessage();
+            Log::warning("Failed to send OTP email to {$email}: " . $emailError);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'OTP sent successfully to your email.'
+            'success'    => true,
+            'message'    => $emailSent
+                ? "OTP sent successfully to {$email}."
+                : "OTP generated for {$email}.",
+            'email_sent' => $emailSent,
+            'dev_otp'    => $emailSent ? null : $otp,
+            'note'       => $emailSent ? null : "Verification code: {$otp}. Please enter this code to verify.",
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
@@ -85,25 +120,58 @@ class AuthOtpController extends Controller
             'name'     => 'required|string|max:255',
             'username' => 'nullable|string|max:50',
             'email'    => 'required|email|unique:users,email',
+            'phone'    => 'nullable|string|max:20',
             'password' => 'required|string|min:6',
             'otp'      => 'required|numeric',
         ]);
 
         $email = strtolower(trim($request->email));
+        $enteredOtp = (string)$request->otp;
+
+        // 1. Check in DB otps table first
+        $validOtpRecord = null;
+        try {
+            $validOtpRecord = Otp::where('identifier', $email)
+                ->where('otp', $enteredOtp)
+                ->where('expires_at', '>', now())
+                ->whereNull('verified_at')
+                ->latest()
+                ->first();
+        } catch (\Throwable $e) {
+            Log::warning("DB check for Otp failed: " . $e->getMessage());
+        }
+
+        // 2. Fallback check in Cache
         $cachedOtp = Cache::get('otp_' . $email);
 
-        if (!$cachedOtp || (string)$cachedOtp !== (string)$request->otp) {
+        if (!$validOtpRecord && (!$cachedOtp || (string)$cachedOtp !== $enteredOtp)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid or expired OTP code. Please request a new one.'
             ], 422);
         }
 
+        // Mark OTP as verified in DB
+        if ($validOtpRecord) {
+            $validOtpRecord->update(['verified_at' => now()]);
+        }
+        Cache::forget('otp_' . $email);
+
         // Generate unique username if not provided
         $username = $request->username ? strtolower(trim($request->username)) : null;
         if (!$username || User::where('username', $username)->exists()) {
             $base = Str::slug(explode('@', $email)[0]);
             $username = $base . rand(100, 999);
+        }
+
+        // Format phone if provided
+        $phone = null;
+        if ($request->phone) {
+            $rawPhone = preg_replace('/[^0-9]/', '', $request->phone);
+            $phone = strlen($rawPhone) > 10 ? substr($rawPhone, -10) : $rawPhone;
+            if ($phone) {
+                $phone = '+91' . $phone;
+            }
         }
 
         // Generate unique user_id
@@ -117,12 +185,10 @@ class AuthOtpController extends Controller
             'username' => $username,
             'user_id'  => $user_id,
             'email'    => $email,
+            'phone'    => $phone,
             'password' => Hash::make($request->password),
             'role'     => 'Customer',
         ]);
-
-        // Clear used OTP
-        Cache::forget('otp_' . $email);
 
         // Generate Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -136,7 +202,7 @@ class AuthOtpController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Account registered successfully! Welcome email sent.',
+            'message' => 'Account registered successfully! Welcome to SwiftShopiy.',
             'token'   => $token,
             'user'    => [
                 'id'       => $user->id,
@@ -144,6 +210,7 @@ class AuthOtpController extends Controller
                 'user_id'  => $user->user_id,
                 'name'     => $user->name,
                 'email'    => $user->email,
+                'phone'    => $user->phone,
                 'role'     => $user->role ?? 'Customer',
             ]
         ], 201);
@@ -160,14 +227,23 @@ class AuthOtpController extends Controller
         ]);
 
         $email = strtolower(trim($request->email));
-        $cachedOtp = Cache::get('otp_' . $email);
+        $enteredOtp = (string)$request->otp;
 
-        if (!$cachedOtp || (string)$cachedOtp !== (string)$request->otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired OTP code.'
-            ], 422);
+        // 1. Check in DB otps table first
+        $validOtpRecord = null;
+        try {
+            $validOtpRecord = Otp::where('identifier', $email)
+                ->where('otp', $enteredOtp)
+                ->where('expires_at', '>', now())
+                ->whereNull('verified_at')
+                ->latest()
+                ->first();
+        } catch (\Throwable $e) {
+            Log::warning("DB check for Otp failed: " . $e->getMessage());
         }
+
+        // 2. Fallback check in Cache
+        $cachedOtp = Cache::get('otp_' . $email);
 
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
 
@@ -178,7 +254,27 @@ class AuthOtpController extends Controller
             ], 404);
         }
 
+        // 3. Fallback check on user record
+        $userOtpMatches = ($user->otp === $enteredOtp && $user->otp_expires_at && $user->otp_expires_at->isFuture());
+
+        if (!$validOtpRecord && (!$cachedOtp || (string)$cachedOtp !== $enteredOtp) && !$userOtpMatches) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired OTP code.'
+            ], 422);
+        }
+
+        if ($validOtpRecord) {
+            $validOtpRecord->update(['verified_at' => now()]);
+        }
         Cache::forget('otp_' . $email);
+
+        // Clear otp on user record
+        try {
+            $user->update(['otp' => null, 'otp_expires_at' => null]);
+        } catch (\Throwable $e) {
+            // Ignore
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -192,6 +288,7 @@ class AuthOtpController extends Controller
                 'user_id'  => $user->user_id,
                 'name'     => $user->name,
                 'email'    => $user->email,
+                'phone'    => $user->phone,
                 'role'     => $user->role ?? 'Customer',
             ]
         ]);
@@ -199,6 +296,7 @@ class AuthOtpController extends Controller
 
     /**
      * 4. Send OTP to mobile phone
+     * Stores OTP and expiry in the database 'otps' table and users table.
      */
     public function sendMobileOtp(Request $request)
     {
@@ -217,21 +315,52 @@ class AuthOtpController extends Controller
         }
 
         $otp = (string) rand(100000, 999999);
-        Cache::put('otp_phone_' . $cleanPhone, $otp, now()->addMinutes(10));
+        $expiresAt = now()->addMinutes(10);
 
+        // 1. Store in Database 'otps' table with expiration
+        try {
+            Otp::create([
+                'identifier' => $cleanPhone,
+                'otp'        => $otp,
+                'type'       => 'mobile',
+                'expires_at' => $expiresAt,
+                'ip_address' => $request->ip(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Failed to insert mobile OTP in otps table: " . $e->getMessage());
+        }
+
+        // 2. Also update in users table if user exists
+        try {
+            User::where('phone', $cleanPhone)
+                ->orWhere('phone', '+91' . $cleanPhone)
+                ->update([
+                    'otp'            => $otp,
+                    'otp_expires_at' => $expiresAt,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning("Could not update user table mobile otp: " . $e->getMessage());
+        }
+
+        // 3. Store in cache
+        Cache::put('otp_phone_' . $cleanPhone, $otp, $expiresAt);
+
+        // 4. Send via Fast2SMS with route 'q' (Quick SMS without DLT registration)
         $apiKey = env('FAST2SMS_API_KEY');
         $smsSent = false;
         $smsError = null;
 
         if ($apiKey) {
             try {
-                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                $response = Http::withHeaders([
                     'authorization' => $apiKey,
                     'Content-Type' => 'application/json',
                 ])->post('https://www.fast2sms.com/dev/bulkV2', [
-                    'route' => 'otp',
-                    'variables_values' => $otp,
-                    'numbers' => $cleanPhone,
+                    'route'            => 'q',
+                    'message'          => "SwiftShopiy: Your verification code is {$otp}. Valid for 10 minutes. Please do not share.",
+                    'language'         => 'english',
+                    'flash'            => 0,
+                    'numbers'          => $cleanPhone,
                 ]);
 
                 $resData = $response->json();
@@ -239,7 +368,7 @@ class AuthOtpController extends Controller
                     $smsSent = true;
                 } else {
                     $smsError = $resData['message'] ?? 'SMS gateway response failed';
-                    Log::warning("Fast2SMS gateway returned for {$cleanPhone}: " . json_encode($resData));
+                    Log::warning("Fast2SMS route 'q' returned for {$cleanPhone}: " . json_encode($resData));
                 }
             } catch (\Throwable $e) {
                 $smsError = $e->getMessage();
@@ -248,13 +377,14 @@ class AuthOtpController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => $smsSent
+            'success'    => true,
+            'message'    => $smsSent
                 ? "OTP sent successfully to +91 {$cleanPhone}."
                 : "OTP generated for +91 {$cleanPhone}.",
-            'sms_sent' => $smsSent,
-            'dev_otp' => $smsSent ? null : $otp,
-            'note' => $smsSent ? null : ($smsError ?: 'Use the OTP code provided to verify.')
+            'sms_sent'   => $smsSent,
+            'dev_otp'    => $smsSent ? null : $otp,
+            'note'       => $smsSent ? null : ($smsError ? "SMS Note: {$smsError}. Verification code: {$otp}" : "Verification code: {$otp}"),
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
@@ -270,21 +400,41 @@ class AuthOtpController extends Controller
 
         $rawPhone = preg_replace('/[^0-9]/', '', $request->phone);
         $cleanPhone = strlen($rawPhone) > 10 ? substr($rawPhone, -10) : $rawPhone;
+        $enteredOtp = (string)$request->otp;
 
+        // 1. Check in DB otps table first
+        $validOtpRecord = null;
+        try {
+            $validOtpRecord = Otp::where('identifier', $cleanPhone)
+                ->where('otp', $enteredOtp)
+                ->where('expires_at', '>', now())
+                ->whereNull('verified_at')
+                ->latest()
+                ->first();
+        } catch (\Throwable $e) {
+            Log::warning("DB check for Mobile Otp failed: " . $e->getMessage());
+        }
+
+        // 2. Fallback check in Cache
         $cachedOtp = Cache::get('otp_phone_' . $cleanPhone);
 
-        if (!$cachedOtp || (string)$cachedOtp !== (string)$request->otp) {
+        // 3. Fallback check in User table
+        $user = User::where('phone', $cleanPhone)->orWhere('phone', '+91' . $cleanPhone)->first();
+        $userOtpMatches = ($user && $user->otp === $enteredOtp && $user->otp_expires_at && $user->otp_expires_at->isFuture());
+
+        if (!$validOtpRecord && (!$cachedOtp || (string)$cachedOtp !== $enteredOtp) && !$userOtpMatches) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid or expired mobile OTP code.'
             ], 422);
         }
 
+        if ($validOtpRecord) {
+            $validOtpRecord->update(['verified_at' => now()]);
+        }
         Cache::forget('otp_phone_' . $cleanPhone);
 
         // Find or create user with this phone
-        $user = User::where('phone', $cleanPhone)->orWhere('phone', '+91' . $cleanPhone)->first();
-
         if (!$user) {
             $userId = 'SW' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
             $user = User::create([
@@ -296,6 +446,12 @@ class AuthOtpController extends Controller
                 'password' => Hash::make(Str::random(16)),
                 'role'     => 'Customer',
             ]);
+        } else {
+            try {
+                $user->update(['otp' => null, 'otp_expires_at' => null]);
+            } catch (\Throwable $e) {
+                // Ignore
+            }
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

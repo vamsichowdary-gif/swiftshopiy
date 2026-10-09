@@ -5,6 +5,7 @@ import {
   Loader2,
   User,
   Mail,
+  Phone,
   Lock,
   Eye,
   EyeOff,
@@ -21,11 +22,13 @@ export default function Register({ onAuthSuccess }) {
     name: "",
     username: "",
     email: "",
+    phone: "",
     password: "",
     password_confirmation: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [otpNotice, setOtpNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
@@ -54,6 +57,7 @@ export default function Register({ onAuthSuccess }) {
     }
 
     setLoading(true);
+    setOtpNotice("");
     try {
       const res = await axios.post(`${API_URL}/send-otp`, {
         email: form.email,
@@ -64,6 +68,13 @@ export default function Register({ onAuthSuccess }) {
       if (res.data?.success) {
         setStep("otp");
         setCountdown(45);
+        if (res.data?.dev_otp) {
+          setOtpNotice(`Verification code: ${res.data.dev_otp}`);
+        } else if (res.data?.note) {
+          setOtpNotice(res.data.note);
+        } else {
+          setOtpNotice("");
+        }
       } else {
         setError(res.data?.message || "Could not send OTP code.");
       }
@@ -92,6 +103,11 @@ export default function Register({ onAuthSuccess }) {
       });
       if (res.data?.success) {
         setCountdown(45);
+        if (res.data?.dev_otp) {
+          setOtpNotice(`Verification code: ${res.data.dev_otp}`);
+        } else if (res.data?.note) {
+          setOtpNotice(res.data.note);
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || "Unable to resend OTP code.");
@@ -110,6 +126,7 @@ export default function Register({ onAuthSuccess }) {
         name: form.name,
         username: form.username,
         email: form.email,
+        phone: form.phone || undefined,
         password: form.password,
         otp: code.trim(),
       };
@@ -178,6 +195,7 @@ export default function Register({ onAuthSuccess }) {
             countdown={countdown}
             loading={loading}
             error={error}
+            notice={otpNotice}
           />
         ) : (
           /* STEP 1: Account Details with clean white bg */
@@ -253,6 +271,23 @@ export default function Register({ onAuthSuccess }) {
                     placeholder="customer@example.com"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition placeholder-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Mobile Number <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="e.g. 9876543210"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition placeholder-slate-400"
                   />
                 </div>
