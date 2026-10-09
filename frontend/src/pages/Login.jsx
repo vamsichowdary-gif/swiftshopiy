@@ -268,7 +268,11 @@ export default function Login({ onAuthSuccess }) {
         {isVerifying ? (
           <div className="w-full flex flex-col items-center">
             <OtpInput
-              email={otpChannel === "email" ? emailOtpAddress : `+91 ${mobileNumber.replace(/\D/g, "")}`}
+              email={
+                otpChannel === "email"
+                  ? emailOtpAddress
+                  : `+91 ${mobileNumber.replace(/\D/g, "").slice(-10)}`
+              }
               length={6}
               onVerify={otpChannel === "email" ? handleVerifyEmailOtp : handleVerifyMobileOtp}
               onResend={otpChannel === "email" ? handleRequestEmailOtp : handleRequestMobileOtp}
@@ -503,7 +507,13 @@ export default function Login({ onAuthSuccess }) {
                           required
                           autoComplete="tel"
                           value={mobileNumber}
-                          onChange={(e) => setMobileNumber(e.target.value)}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/\D/g, "");
+                            if (val.startsWith("91") && val.length > 10) {
+                              val = val.substring(2);
+                            }
+                            setMobileNumber(val.slice(0, 10));
+                          }}
                           placeholder="e.g. 6303062506"
                           className="w-full pl-10 pr-4 py-3 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition placeholder-slate-400"
                         />

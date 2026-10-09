@@ -87,17 +87,9 @@ class AuthOtpController extends Controller
         Cache::put('otp_' . $email, $otp, $expiresAt);
 
         // 4. Dispatch OTP email to the entered address
-        $emailSent = false;
-        $emailError = null;
-
-        try {
-            Mail::to($email)->send(new OtpVerificationMail($otp, $name));
-            $emailSent = true;
-            Log::info("OTP verification email sent successfully to {$email}");
-        } catch (\Throwable $e) {
-            $emailError = $e->getMessage();
-            Log::warning("Failed to send OTP email to {$email}: " . $emailError);
-        }
+        $dispatchResult = $this->dispatchOtpEmail($email, $otp, $name);
+        $emailSent = $dispatchResult['sent'];
+        $emailError = $dispatchResult['error'];
 
         return response()->json([
             'success'    => true,
@@ -470,5 +462,80 @@ class AuthOtpController extends Controller
                 'role'     => $user->role ?? 'Customer',
             ]
         ]);
+    }
+
+    /**
+     * Dispatch OTP email to the entered address.
+     * Tries:
+     * 1. Resend HTTP API (port 443 HTTPS - works on Render) if RESEND_API_KEY is present
+     * 2. Brevo HTTP API (port 443 HTTPS - works on Render) if BREVO_API_KEY is present
+     * 3. Laravel Mail / SMTP
+     */
+    private function dispatchOtpEmail(string $email, string $otp, string $name): array
+    {
+        // 1. Resend HTTP API (works seamlessly on Render)
+        $resendKey = env('RESEND_API_KEY');
+        if ($resendKey) {
+            try {
+                $fromEmail = env('MAIL_FROM_ADDRESS') ?: 'onboarding@resend.dev';
+                $fromName = env('MAIL_FROM_NAME') ?: 'SwiftShopiy';
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $resendKey,
+                    'Content-Type'  => 'application/json',
+                ])->post('https://api.resend.com/emails', [
+                    'from'    => "{$fromName} <{$fromEmail}>",
+                    'to'      => [$email],
+                    'subject' => "{$otp} is your verification code for SwiftShopiy",
+                    'html'    => view('emails.otp', ['otp' => $otp, 'name' => $name])->render(),
+                ]);
+
+                if ($response->successful()) {
+                    Log::info("OTP email sent via Resend API to {$email}");
+                    return ['sent' => true, 'error' => null];
+                } else {
+                    Log::warning("Resend API failed: " . $response->body());
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Resend API connection error: " . $e->getMessage());
+            }
+        }
+
+        // 2. Brevo HTTP API (works seamlessly on Render)
+        $brevoKey = env('BREVO_API_KEY');
+        if ($brevoKey) {
+            try {
+                $response = Http::withHeaders([
+                    'api-key'      => $brevoKey,
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.brevo.com/v3/smtp/email', [
+                    'sender'      => [
+                        'name'  => config('mail.from.name', 'SwiftShopiy'),
+                        'email' => config('mail.from.address', 'naiduvamsi489@gmail.com')
+                    ],
+                    'to'          => [['email' => $email, 'name' => $name]],
+                    'subject'     => "{$otp} is your verification code for SwiftShopiy",
+                    'htmlContent' => view('emails.otp', ['otp' => $otp, 'name' => $name])->render(),
+                ]);
+
+                if ($response->successful()) {
+                    Log::info("OTP email sent via Brevo API to {$email}");
+                    return ['sent' => true, 'error' => null];
+                } else {
+                    Log::warning("Brevo API failed: " . $response->body());
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Brevo API connection error: " . $e->getMessage());
+            }
+        }
+
+        // 3. Fallback to Laravel Mail (SMTP)
+        try {
+            Mail::to($email)->send(new OtpVerificationMail($otp, $name));
+            Log::info("OTP email sent via SMTP to {$email}");
+            return ['sent' => true, 'error' => null];
+        } catch (\Throwable $e) {
+            Log::warning("SMTP mail failed to {$email}: " . $e->getMessage());
+            return ['sent' => false, 'error' => $e->getMessage()];
+        }
     }
 }
